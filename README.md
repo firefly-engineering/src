@@ -27,61 +27,30 @@ This is a monorepo setup with Nix environment and Buck2 build system.
 
 ## Building and Running
 
-**Build the hello-world Rust example:**
+Build any target with:
 ```bash
-buck2 build //hello-world
+buck2 build //path/to/target
 ```
 
-**Run the hello-world Rust example:**
+Run any binary target with:
 ```bash
-buck2 run //hello-world
+buck2 run //path/to/target
 ```
 
-**Build the hello-world Go example:**
-```bash
-buck2 build //go-hello-world
-```
+## Project Organization
 
-**Run the hello-world Go example:**
-```bash
-buck2 run //go-hello-world
-```
-
-## Project Structure
-
-```
-.
-├── .envrc              # direnv configuration for Nix environment
-├── flake.nix           # Minimal Nix flake using flake-parts
-├── nix/                # Nix modules directory
-│   ├── default.nix     # Main flake-parts module with imports
-│   └── shell.nix       # Development shell flake-parts module
-├── .buckconfig         # Buck2 configuration
-├── BUCK                # Root Buck2 build file
-├── hello-world/        # Rust hello-world example
-│   ├── BUCK            # Buck2 target definition
-│   ├── Cargo.toml      # Rust package configuration
-│   └── main.rs         # Rust source code
-└── go-hello-world/     # Go hello-world example
-    ├── BUCK            # Buck2 target definition
-    └── main.go         # Go source code
-```
+Projects can be organized anywhere in the repository. Common patterns include:
+- `//experimental/` - For experimental and proof-of-concept projects
+- `//apps/` - For applications
+- `//libs/` - For shared libraries
+- `//tools/` - For development tools
 
 ## Adding New Projects
 
-To add a new Rust project:
-
-1. Create a new directory with your project name
-2. Add a `BUCK` file with your `rust_binary` or `rust_library` target
-3. Add your Rust source files
-4. Build with `buck2 build //your-project-name`
-
-To add a new Go project:
-
-1. Create a new directory with your project name
-2. Add a `BUCK` file with your `go_binary` or `go_library` target
-3. Add your Go source files
-4. Build with `buck2 build //your-project-name`
+1. Create a directory for your project
+2. Add a `BUCK` file with your target definitions
+3. Add your source files
+4. Build with `buck2 build //your-project-path`
 
 ## Environment
 
