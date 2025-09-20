@@ -15,6 +15,8 @@
           rust-analyzer
           rustfmt
           clippy
+          python3
+          llvm
         ];
       };
     };

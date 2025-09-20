@@ -22,6 +22,8 @@ This is a monorepo setup with Nix environment and Buck2 build system.
    - `buck2` - Build system
    - `go` - Go programming language
    - `rust` - Rust programming language (including `cargo`, `rust-analyzer`, `rustfmt`, `clippy`)
+   - `python3` - Python programming language
+   - `llvm` - LLVM toolchain (including `clang`, `clang++`)
 
 ## Building and Running
 
