@@ -1,0 +1,7 @@
+# Rust binary target for hello-world
+
+rust_binary(
+    name = "hello-world",
+    srcs = ["main.rs"],
+    edition = "2021",
+)
