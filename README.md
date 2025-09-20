@@ -37,6 +37,16 @@ buck2 build //hello-world
 buck2 run //hello-world
 ```
 
+**Build the hello-world Go example:**
+```bash
+buck2 build //go-hello-world
+```
+
+**Run the hello-world Go example:**
+```bash
+buck2 run //go-hello-world
+```
+
 ## Project Structure
 
 ```
@@ -48,10 +58,13 @@ buck2 run //hello-world
 │   └── shell.nix       # Development shell flake-parts module
 ├── .buckconfig         # Buck2 configuration
 ├── BUCK                # Root Buck2 build file
-└── hello-world/        # Rust hello-world example
+├── hello-world/        # Rust hello-world example
+│   ├── BUCK            # Buck2 target definition
+│   ├── Cargo.toml      # Rust package configuration
+│   └── main.rs         # Rust source code
+└── go-hello-world/     # Go hello-world example
     ├── BUCK            # Buck2 target definition
-    ├── Cargo.toml      # Rust package configuration
-    └── main.rs         # Rust source code
+    └── main.go         # Go source code
 ```
 
 ## Adding New Projects
@@ -61,6 +74,13 @@ To add a new Rust project:
 1. Create a new directory with your project name
 2. Add a `BUCK` file with your `rust_binary` or `rust_library` target
 3. Add your Rust source files
+4. Build with `buck2 build //your-project-name`
+
+To add a new Go project:
+
+1. Create a new directory with your project name
+2. Add a `BUCK` file with your `go_binary` or `go_library` target
+3. Add your Go source files
 4. Build with `buck2 build //your-project-name`
 
 ## Environment
