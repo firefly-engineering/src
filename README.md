@@ -40,7 +40,10 @@ buck2 run //hello-world
 ```
 .
 ├── .envrc              # direnv configuration for Nix environment
-├── flake.nix           # Nix flake definition with all tools
+├── flake.nix           # Minimal Nix flake using flake-parts
+├── nix/                # Nix modules directory
+│   ├── default.nix     # Main flake-parts module with imports
+│   └── shell.nix       # Development shell flake-parts module
 ├── .buckconfig         # Buck2 configuration
 ├── BUCK                # Root Buck2 build file
 └── hello-world/        # Rust hello-world example
