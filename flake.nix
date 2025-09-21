@@ -4,6 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
+    devenv.url = "github:cachix/devenv";
   };
 
   outputs =
@@ -20,6 +21,7 @@
       ];
 
       imports = [
+        inputs.devenv.flakeModule
         (importApply ./nix { inherit (inputs) withSystem; })
       ];
     };

@@ -3,20 +3,32 @@
   perSystem =
     { pkgs, ... }:
     {
-      devShells.default = pkgs.mkShell {
-        buildInputs = with pkgs; [
+      devenv.shells.default = {
+        enterShell = ''
+          echo "🚀 Welcome to Firefly Engineering Monorepo"
+        '';
+
+        claude.code = {
+          enable = true;
+        };
+
+        languages = {
+          cplusplus.enable = true;
+          go.enable = true;
+          jsonnet.enable = true;
+          nix.enable = true;
+          python.enable = true;
+          rust.enable = true;
+          shell.enable = true;
+        };
+
+        packages = with pkgs; [
+          # build
+          buck2
+          nix
+          # version control
           git
           jujutsu
-          nix
-          buck2
-          go
-          rustc
-          cargo
-          rust-analyzer
-          rustfmt
-          clippy
-          python3
-          llvm
         ];
       };
     };

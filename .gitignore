@@ -64,3 +64,8 @@ coverage/
 
 # Profiling data
 *.prof
+
+# devenv generated files
+.claude/
+.devenv/
+.pre-commit-config.yaml

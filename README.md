@@ -10,12 +10,15 @@ This is a monorepo setup with Nix environment and Buck2 build system.
 ## Getting Started
 
 1. **Activate the Nix environment:**
+
    ```bash
    direnv allow
    ```
+
    This will automatically activate the Nix shell with all required tools.
 
 2. **Available tools:**
+
    - `git` - Version control
    - `jujutsu` - Modern Git-compatible VCS
    - `nix` - Package manager
@@ -28,11 +31,13 @@ This is a monorepo setup with Nix environment and Buck2 build system.
 ## Building and Running
 
 Build any target with:
+
 ```bash
 buck2 build //path/to/target
 ```
 
 Run any binary target with:
+
 ```bash
 buck2 run //path/to/target
 ```
@@ -40,6 +45,7 @@ buck2 run //path/to/target
 ## Project Organization
 
 Projects can be organized anywhere in the repository. Common patterns include:
+
 - `//experimental/` - For experimental and proof-of-concept projects
 - `//apps/` - For applications
 - `//libs/` - For shared libraries
@@ -48,9 +54,9 @@ Projects can be organized anywhere in the repository. Common patterns include:
 ## Adding New Projects
 
 1. Create a directory for your project
-2. Add a `BUCK` file with your target definitions
-3. Add your source files
-4. Build with `buck2 build //your-project-path`
+1. Add a `BUCK` file with your target definitions
+1. Add your source files
+1. Build with `buck2 build //your-project-path`
 
 ## Environment
 
