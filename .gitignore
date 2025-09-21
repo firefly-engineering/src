@@ -69,3 +69,6 @@ coverage/
 .claude/
 .devenv/
 .pre-commit-config.yaml
+
+# jujutsu
+.jj/
