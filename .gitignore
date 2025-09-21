@@ -70,5 +70,8 @@ coverage/
 .devenv/
 .pre-commit-config.yaml
 
+# mdbook build output
+docs/book/
+
 # jujutsu
 .jj/

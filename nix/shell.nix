@@ -28,6 +28,8 @@
           # build
           buck2
           nix
+          # documentation
+          mdbook
           # version control
           git
           jujutsu
