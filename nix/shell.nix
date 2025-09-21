@@ -4,6 +4,8 @@
     { pkgs, ... }:
     {
       devenv.shells.default = {
+        imports = [ ./devenv/agents.nix ];
+
         enterShell = ''
           echo "🚀 Welcome to Firefly Engineering Monorepo"
         '';
