@@ -1,0 +1,10 @@
+load("@toolchains//mdbook:mdbook.bzl", "mdbook")
+
+# Build the documentation site with mdbook
+mdbook(
+    name = "docs",
+    srcs = [
+        "book.toml",
+    ] + glob(["src/*.md"]),
+    visibility = ["PUBLIC"],
+)

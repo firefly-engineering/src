@@ -2,6 +2,7 @@ load("@prelude//toolchains:rust.bzl", "system_rust_toolchain")
 load("@prelude//toolchains:go.bzl", "system_go_toolchain", "system_go_bootstrap_toolchain")
 load("@prelude//toolchains:python.bzl", "system_python_bootstrap_toolchain")
 load("@prelude//toolchains:cxx.bzl", "system_cxx_toolchain")
+load("//mdbook:mdbook.bzl", "mdbook")
 
 # Explicit system toolchains for Rust, Go, Python, and C++
 system_rust_toolchain(
