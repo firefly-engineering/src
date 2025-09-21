@@ -8,14 +8,31 @@ title = "Firefly Engineering Monorepo Documentation"
 [build]
 build-dir = "book"
 
+[preprocessor.admonish]
+command = "mdbook-admonish"
+assets_version = "3.1.0" # do not edit: managed by `mdbook-admonish install`
+
+[preprocessor.footnote]
+
+[preprocessor.graphviz]
+command = "mdbook-graphviz"
+output-to-file = false
+
 [preprocessor.links]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
 
 [output.html]
 git-repository-url = "https://github.com/firefly-engineering/src"
 edit-url-template = "https://github.com/firefly-engineering/src/edit/main/docs/{path}"
+additional-css = ["./css/mdbook-admonish.css"]
+additional-js = ["./js/mermaid.min.js", "./js/mermaid-init.js"]
 
 [output.html.search]
 enable = true
 
 [output.html.print]
 enable = true
+
+[output.linkcheck]

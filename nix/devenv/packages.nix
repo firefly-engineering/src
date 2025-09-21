@@ -6,6 +6,7 @@
     nix
 
     # documentation
+    graphviz
     mdbook
     mdbook-admonish
     mdbook-footnote

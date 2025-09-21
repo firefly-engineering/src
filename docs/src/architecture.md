@@ -1,5 +1,9 @@
 # Firefly Engineering Monorepo Architecture
 
+```admonish info
+This architecture is not fully implemented yet.
+```
+
 ## Table of Contents
 
 1. [Overview](#overview)
