@@ -1,0 +1,8 @@
+[book]
+title = "Test Book"
+description = "A test mdbook to verify the rule works in different packages"
+authors = ["Buck2 Test"]
+
+[build]
+build-dir = "book"
+create-missing = true

@@ -1,0 +1,12 @@
+load("@toolchains//mdbook:mdbook.bzl", "mdbook")
+
+# Test mdbook in different package to verify reusability
+mdbook(
+    name = "test-book",
+    srcs = [
+        "book.toml",
+        "src/SUMMARY.md",
+        "src/introduction.md",
+    ],
+    visibility = ["PUBLIC"],
+)

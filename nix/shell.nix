@@ -30,6 +30,8 @@
           nix
           # documentation
           mdbook
+          # development
+          fswatch  # File watching for mdbook hot-reload
           # version control
           git
           jujutsu
