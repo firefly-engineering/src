@@ -324,6 +324,156 @@ When a project needs to be extracted:
 3. Run standard tooling (`cargo publish`, `go mod tidy`)
 4. Project works independently
 
+## Architecture in Practice: mdbook Documentation
+
+This section demonstrates the architecture principles through a concrete example: the implementation of a custom Buck2 rule for building mdbook documentation.
+
+### The Challenge
+
+We wanted to build this documentation using Buck2 while maintaining compatibility with standard mdbook tooling. This required:
+
+1. **System Toolchain Integration**: Using the `mdbook` binary provided by Nix
+2. **Dependency Tracking**: Ensuring Buck2 rebuilds when markdown files change
+3. **Native Compatibility**: Preserving ability to use `mdbook serve` for development
+4. **Hermetic Builds**: Reproducible documentation generation
+
+### The Solution
+
+#### Custom Buck2 Rule (`toolchains/mdbook/mdbook.bzl`)
+
+```python
+def _mdbook_impl(ctx: AnalysisContext) -> list[Provider]:
+    """Implementation for mdbook rule that builds documentation."""
+
+    # Declare the output directory for the built book
+    output_dir = ctx.actions.declare_output("book", dir = True)
+
+    # Use the package directory as the source directory
+    src_dir = ctx.label.package
+
+    # Create a script that runs mdbook and ensures output exists
+    script = ctx.actions.write("mdbook_build.sh", [
+        "#!/bin/bash",
+        "set -euo pipefail",
+        "mkdir -p $1",
+        "mdbook build {} --dest-dir $1".format(src_dir),
+    ])
+
+    # Command with proper input/output tracking
+    cmd = cmd_args([
+        "bash",
+        script,
+        output_dir.as_output(),  # Buck2 tracks this output
+    ], hidden = ctx.attrs.srcs if ctx.attrs.srcs else [])
+
+    ctx.actions.run(cmd, category = "mdbook_build")
+
+    return [
+        DefaultInfo(default_output = output_dir),
+        # RunInfo enables 'buck2 run //docs:docs' to start development server
+        RunInfo(args = cmd_args(["mdbook", "serve", src_dir])),
+    ]
+
+mdbook = rule(
+    impl = _mdbook_impl,
+    attrs = {
+        "srcs": attrs.list(attrs.source(), default = [],
+                          doc = "Markdown and config files"),
+    },
+    doc = "Builds an mdbook documentation site",
+)
+```
+
+#### Build Target (`docs/BUCK`)
+
+```python
+load("@toolchains//mdbook:mdbook.bzl", "mdbook")
+
+mdbook(
+    name = "docs",
+    srcs = [
+        "book.toml",
+    ] + glob(["src/*.md"]),  # Automatic discovery of markdown files
+    visibility = ["PUBLIC"],
+)
+```
+
+### Architecture Principles Demonstrated
+
+#### 1. **System Toolchain Integration**
+
+**Challenge**: Use Nix-provided `mdbook` without vendoring binaries.
+
+**Solution**: The rule directly calls `mdbook` from the system PATH, which is provided by the Nix shell environment. No additional toolchain configuration needed.
+
+**Benefits**:
+- ✅ Single source of truth for tool versions (Nix)
+- ✅ No binary vendoring or version conflicts
+- ✅ Automatic updates when Nix environment changes
+
+#### 2. **Hermetic Dependency Tracking**
+
+**Challenge**: Ensure Buck2 knows when to rebuild documentation.
+
+**Solution**: Source files listed in `srcs` are passed as `hidden` dependencies to `cmd_args`, ensuring Buck2 tracks all inputs without exposing them on the command line.
+
+**Benefits**:
+- ✅ Incremental builds - only rebuild when content changes
+- ✅ Parallel execution - Buck2 can build docs alongside other targets
+- ✅ Caching - identical inputs produce cached results
+
+#### 3. **Native Tooling Compatibility**
+
+**Challenge**: Preserve developer workflow with standard tools.
+
+**Solution**: The rule operates on standard mdbook project structure (`book.toml`, `src/` directory) and produces standard HTML output.
+
+**Benefits**:
+- ✅ `mdbook serve` works normally for development
+- ✅ Generated docs compatible with any web server
+- ✅ No Buck2-specific artifacts in documentation source
+
+#### 4. **Transparent Environment Configuration**
+
+**Challenge**: Make mdbook available without user intervention.
+
+**Solution**: Nix shell automatically provides `mdbook` binary and all dependencies.
+
+**Benefits**:
+- ✅ Zero configuration - `nix develop` provides everything
+- ✅ Consistent versions across all team members
+- ✅ No global system pollution
+
+### Usage Examples
+
+```bash
+# Build documentation (Buck2)
+buck2 build //docs:docs
+
+# Show output location
+buck2 build //docs:docs --show-output
+
+# Serve documentation (Buck2) - starts development server
+buck2 run //docs:docs
+
+# Development server (native tooling)
+cd docs && mdbook serve
+
+# One-time build (native tooling)
+cd docs && mdbook build
+```
+
+### Key Insights
+
+This implementation showcases several architectural advantages:
+
+1. **Composability**: The same `mdbook` binary works in both Buck2 and native contexts
+2. **Maintainability**: Adding new documentation files requires no BUCK file changes (glob patterns)
+3. **Reliability**: Buck2's dependency tracking ensures documentation stays in sync with changes
+4. **Simplicity**: The rule implementation is straightforward and follows Buck2 conventions
+
+The mdbook rule demonstrates how the hybrid Nix + Buck2 architecture delivers on its promise: **powerful build capabilities without ecosystem lock-in**.
+
 ## Implementation Details
 
 ### Current Implementation Status
@@ -333,10 +483,11 @@ When a project needs to be extracted:
 - Buck2 basic configuration with system toolchains
 - Multi-language support (Rust, Go, Python, C++)
 - Example projects demonstrating integration
+- Custom mdbook Buck2 rule with full source dependency tracking
+- Automated documentation builds integrated with monorepo workflow
 
 🚧 **In Progress:**
-- Documentation and architecture refinement
-- Additional example projects
+- Additional example projects for other tools and languages
 
 📋 **Planned:**
 - Nix-based dependency management implementation
@@ -349,12 +500,16 @@ When a project needs to be extracted:
 ```
 src/
 ├── docs/
-│   └── architecture.md          # This document
+│   ├── src/                    # Documentation source
+│   ├── book.toml               # mdbook configuration
+│   └── BUCK                    # Documentation build target
 ├── nix/
 │   ├── shell.nix               # Development environment
 │   ├── dependencies/           # [Planned] Centralized deps
 │   └── bridge/                 # [Planned] Proxy implementations
 ├── toolchains/
+│   ├── mdbook/
+│   │   └── mdbook.bzl          # Custom mdbook Buck2 rule
 │   └── BUCK                    # System toolchain definitions
 ├── experimental/               # Example projects
 │   ├── rs-hello-world/
