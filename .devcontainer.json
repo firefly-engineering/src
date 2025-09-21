@@ -1,0 +1,20 @@
+{
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "mkhl.direnv",
+        "phgn.vscode-starlark",
+        "tamasfe.even-better-toml",
+        "redhat.vscode-yaml",
+        "golang.go",
+        "rust-lang.rust-analyzer",
+        "dustypomerleau.rust-syntax",
+        "Grafana.vscode-jsonnet",
+        "jnoortheen.nix-ide"
+      ]
+    }
+  },
+  "image": "ghcr.io/cachix/devenv/devcontainer:latest",
+  "overrideCommand": false,
+  "updateContentCommand": "devenv test"
+}
