@@ -7,6 +7,11 @@
 
     # documentation
     mdbook
+    mdbook-admonish
+    mdbook-footnote
+    mdbook-graphviz
+    mdbook-linkcheck
+    mdbook-mermaid
 
     # development
     fswatch
