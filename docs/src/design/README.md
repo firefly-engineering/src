@@ -5,6 +5,9 @@ This section contains detailed design documents and implementation roadmaps for 
 ## Contents
 
 - **[Go Dependency Management Roadmap](./go-dependency-management-roadmap.md)**: Implementation plan for Nix-based Go dependency management with GOPROXY integration
+- **[Rust Dependency Management Roadmap](./rust-dependency-management-roadmap.md)**: Implementation plan for Nix-based Rust dependency management with local crate registry
+- **[Python Dependency Management Roadmap](./python-dependency-management-roadmap.md)**: Implementation plan for Nix-based Python dependency management with local PyPI index
+- **[TypeScript Dependency Management Roadmap](./typescript-dependency-management-roadmap.md)**: Implementation plan for Nix-based TypeScript/Node.js dependency management with local npm registry and pnpm integration
 
 ## Purpose
 
