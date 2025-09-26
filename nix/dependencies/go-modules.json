@@ -1,0 +1,14 @@
+{
+  "golang.org/x/example": [
+    {
+      "version": "v0.0.0-20250915201037-7f05d217867b",
+      "hash": "sha256-jD/FEakADM8v9jB5cLkfORRFqSbFeg3lPxnX6nfJldQ=",
+      "time": "2024-09-15T20:10:37Z",
+      "repo": "https://github.com/golang/example",
+      "packages": [
+        "golang.org/x/example/hello",
+        "golang.org/x/example/hello/reverse"
+      ]
+    }
+  ]
+}

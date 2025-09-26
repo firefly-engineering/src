@@ -59,8 +59,7 @@ This serves as a practical demonstration of our dependency management system han
          "hash": "sha256-8c+wXZC1cJAHCZQ6l1S4xxHAQfJ5KXvfvkZVV4j1Zw4=",
          "time": "2023-10-25T14:00:28Z",
          "repo": "https://go.googlesource.com/example",
-         "submodules": [
-           "golang.org/x/example/hello",
+         "packages": [
            "golang.org/x/example/hello/reverse"
          ]
        }
