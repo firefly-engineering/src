@@ -13,6 +13,6 @@ mdbook(
     name = "docs",
     srcs = [
         "book.toml",
-    ] + glob(["src/**/*.md"]),
+    ] + glob(["src/**/*.md"]) + glob(["css/**/*.css"]) + glob(["js/**/*.js"]),
     visibility = ["PUBLIC"],
 )

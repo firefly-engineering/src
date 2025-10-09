@@ -1,7 +1,32 @@
 # Custom mdbook rule for Buck2
 
+# --- The Provider ---
+# This defines the data structure that the toolchain will return.
+MdbookToolchainInfo = provider(fields = ["mdbook_binary"])
+
+# --- The Toolchain Rule ---
+def _system_mdbook_toolchain_impl(ctx: AnalysisContext) -> list[Provider]:
+    """The implementation for the mdbook toolchain rule."""
+    # In a real toolchain, this might point to a specific binary version
+    # or use a toolchain-provided executable. For now, we use the system mdbook.
+    return [
+        DefaultInfo(),
+        MdbookToolchainInfo(mdbook_binary = "mdbook"),
+    ]
+
+system_mdbook_toolchain = rule(
+    impl = _system_mdbook_toolchain_impl,
+    attrs = {},
+    is_toolchain_rule = True,
+)
+
+# --- The Consuming Rule ---
 def _mdbook_impl(ctx: AnalysisContext) -> list[Provider]:
     """Implementation for mdbook rule that builds documentation."""
+
+    # Resolve the toolchain to get the mdbook binary
+    toolchain = ctx.attrs._mdbook_toolchain[MdbookToolchainInfo]
+    mdbook_binary = toolchain.mdbook_binary
 
     # Declare the output directory for the built book
     output_dir = ctx.actions.declare_output("book", dir = True)
@@ -46,8 +71,8 @@ def _mdbook_impl(ctx: AnalysisContext) -> list[Provider]:
         'echo "Absolute output path: $ABS_OUTPUT"',
 
         # Run mdbook build from the temporary hermetic source directory
-        'echo "Running: mdbook build $1 --dest-dir $ABS_OUTPUT"',
-        "mdbook build $1 --dest-dir $ABS_OUTPUT",
+        'echo "Running: {} build $1 --dest-dir $ABS_OUTPUT"'.format(mdbook_binary),
+        "{} build $1 --dest-dir $ABS_OUTPUT".format(mdbook_binary),
 
         'echo "Listing output directory contents:"',
         "ls -la $2",
@@ -159,7 +184,7 @@ def _mdbook_impl(ctx: AnalysisContext) -> list[Provider]:
 
         # Serve from the temporary hermetic source directory
         'echo "Starting mdbook serve from $TEMP_DIR (press Ctrl+C to stop)"',
-        'mdbook serve "$TEMP_DIR"',
+        '{} serve "$TEMP_DIR"'.format(mdbook_binary),
     ]
 
     # Create a serve script that also uses hermetic source directory
@@ -180,6 +205,12 @@ mdbook = rule(
     impl = _mdbook_impl,
     attrs = {
         "srcs": attrs.list(attrs.source(), default = [], doc = "List of source files (markdown, book.toml, etc.) that should trigger rebuilds"),
+        "_mdbook_toolchain": attrs.default_only(
+            attrs.toolchain_dep(
+                default = "toolchains//:mdbook",
+                providers = [MdbookToolchainInfo],
+            ),
+        ),
     },
     doc = """Builds an mdbook documentation site from hermetic sources.
 
