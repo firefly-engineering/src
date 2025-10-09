@@ -8,12 +8,14 @@ This monorepo employs a unique architecture that combines the best of both world
 
 - **[Nix + Flakes](./architecture.md#nix-based-toolchain-management)** for reproducible development environments and toolchain management
 - **[Buck2](./architecture.md#buck2-build-system-integration)** as a fast, hermetic build system
+- **[Toolchain Synchronization](./design/toolchain-synchronization.md)** ensuring native tools and Buck2 use identical binaries
 - **[Supply Chain Security](./supply-chain-security.md)** through content-addressed dependencies and centralized auditing
 
 ## Key Benefits
 
 ### For Developers
 - **Single Command Setup**: `nix develop` provides everything needed to start contributing
+- **Guaranteed Consistency**: Native tools and Buck2 use identical toolchain binaries - no "works on my machine" issues
 - **Familiar Tooling**: Standard language tools (cargo, go build, python) work seamlessly
 - **Fast Builds**: Buck2 provides incremental builds with excellent caching
 - **IDE Integration**: Full language server support for all supported languages
@@ -26,6 +28,7 @@ This monorepo employs a unique architecture that combines the best of both world
 
 ### For the Organization
 - **Reproducible Environments**: Identical development and CI environments
+- **High-Performance CI**: Buck2 remote caching with automatic cache invalidation via content-addressed toolchains
 - **Ecosystem Compatibility**: Projects remain extractable as standard language packages
 - **Patch Management**: Apply security fixes without waiting for upstream releases
 - **Compliance**: Complete audit trail of all dependencies

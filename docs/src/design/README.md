@@ -4,6 +4,10 @@ This section contains detailed design documents and implementation roadmaps for 
 
 ## Contents
 
+### Core Architecture
+
+- **[Toolchain Synchronization](./toolchain-synchronization.md)**: Architecture for guaranteed synchronization between native tooling and Buck2 builds through single source of truth configuration
+
 ### Dependency Management Approaches
 
 - **[External Cell Dependency Management](./ext-cell-dependency-management.md)**: Alternative approach using Buck2 cells with Nix-generated build files for explicit dependency management

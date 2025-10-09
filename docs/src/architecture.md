@@ -21,11 +21,23 @@ This architecture is not fully implemented yet.
 
 The Firefly Engineering monorepo employs a hybrid architecture that combines **Nix** for environment and toolchain management with **Buck2** as the primary build system. This architecture is designed to provide hermetic builds, reproducible environments, and seamless integration with native language toolchains while avoiding the typical "ecosystem contamination" problems of traditional monorepos.
 
+### The Two Toolchain Challenge
+
+A fundamental architectural challenge in this monorepo is managing **two distinct toolchain execution contexts**:
+
+1. **Native tooling context**: Developers using `go build`, `cargo check`, IDE language servers, etc.
+2. **Buck2 build context**: Hermetic builds with explicit dependency tracking
+
+The key innovation of this architecture is **guaranteed synchronization**: both contexts use the exact same toolchain binaries, not just similar versions. This is achieved through a **single source of truth** configuration that generates both the development shell environment and Buck2 toolchain definitions from the same Nix derivations.
+
+See [Toolchain Synchronization](./design/toolchain-synchronization.md) for the detailed design.
+
 ### Key Components
 
 - **Nix + Flakes**: Provides reproducible development environments and toolchain provisioning
 - **Buck2**: Fast, hermetic build system with excellent language support
-- **System Toolchains**: Buck2 leverages toolchains provided by Nix instead of vendored ones
+- **Toolchain Synchronization**: Single source of truth (`toolchain.toml`) generates both shell and Buck2 configurations
+- **System Toolchains**: Buck2 references the exact same Nix-provided binaries used in the shell
 - **Transparent Dependency Management**: Third-party dependencies managed via Nix with transparent bridging to build tools
 
 ## Design Principles
@@ -93,14 +105,57 @@ The architecture prioritizes developer productivity with fast builds, easy onboa
 
 ## Nix-Based Toolchain Management
 
-### Current Implementation
+### Architecture Overview
 
-The repository uses Nix with flakes to provide a consistent development environment across all team members and CI systems.
+The repository uses Nix with flakes to provide a consistent development environment across all team members and CI systems. The toolchain management follows a **layered configuration approach**:
+
+1. **Abstract Definition**: `toolchain.toml` declares high-level toolchain requirements
+2. **Backend Implementation**: Nix recipes translate abstract definitions to concrete derivations
+3. **Dual Output**: Same Nix derivations power both shell environment and Buck2 toolchains
+
+This architecture ensures that `go version` in the shell and `go version` invoked by Buck2 return identical results, because they're literally the same binary.
 
 **Key Files:**
+- `toolchain.toml`: Single source of truth for toolchain versions
 - `flake.nix`: Main flake configuration
+- `nix/toolchain.nix`: Backend-specific toolchain configuration
+- `nix/generators/`: Code generators for shell and Buck2 configs
 - `nix/shell.nix`: Development environment specification
 - `nix/devenv/agents.nix`: Claude Code integration
+
+### Toolchain Definition
+
+**High-Level Definition** (`toolchain.toml`):
+```toml
+[toolchain]
+schema_version = "1.0"
+
+[go]
+version = "1.21.5"
+
+[rust]
+version = "1.75.0"
+
+[python]
+version = "3.11"
+```
+
+**Backend Configuration** (`nix/toolchain.nix`):
+```nix
+# Backend-specific implementation details
+{
+  go = {
+    version = "1.21.5";
+    package = pkgs.go_1_21;
+    sha256 = "sha256-...";
+  };
+
+  rust = {
+    version = "1.75.0";
+    package = pkgs.rust-bin.stable."1.75.0".default;
+  };
+}
+```
 
 ### Environment Specification
 
@@ -173,16 +228,53 @@ This approach ensures that:
 
 ### System Toolchain Strategy
 
-Buck2 is configured to use "system toolchains" that are actually provided by Nix, avoiding the need to vendor toolchain binaries within the repository.
+Buck2 is configured to use "system toolchains" that reference the **exact same Nix derivations** used in the development shell. This guarantees binary-level synchronization between native tooling and Buck2 builds.
 
-**Configuration:**
+**Generated Configuration:**
+
+The Buck2 toolchain definitions are **automatically generated** from the same `toolchain.toml` and `nix/toolchain.nix` that produce the shell environment:
+
 ```python
-# toolchains/BUCK
-system_rust_toolchain(name = "rust", visibility = ["PUBLIC"])
-system_go_toolchain(name = "go", visibility = ["PUBLIC"])
-system_python_bootstrap_toolchain(name = "python_bootstrap", visibility = ["PUBLIC"])
-system_cxx_toolchain(name = "cxx", visibility = ["PUBLIC"])
+# toolchains/BUCK (Generated - DO NOT EDIT MANUALLY)
+# Generated from toolchain.toml via nix/generators/buck2.nix
+
+system_go_toolchain(
+    name = "go",
+    go_root = "/nix/store/...-go-1.21.5",  # Same path as shell
+    go_bin = "/nix/store/...-go-1.21.5/bin/go",
+    visibility = ["PUBLIC"],
+)
+
+system_rust_toolchain(
+    name = "rust",
+    rustc = "/nix/store/...-rust-1.75.0/bin/rustc",
+    cargo = "/nix/store/...-rust-1.75.0/bin/cargo",
+    visibility = ["PUBLIC"],
+)
+
+system_python_bootstrap_toolchain(
+    name = "python_bootstrap",
+    visibility = ["PUBLIC"],
+)
+
+system_cxx_toolchain(
+    name = "cxx",
+    visibility = ["PUBLIC"],
+)
 ```
+
+### Generation Pipeline
+
+```
+toolchain.toml → nix/toolchain.nix → nix/generators/buck2.nix → toolchains/BUCK
+                                   ↘ nix/generators/shell.nix → devShell
+```
+
+Both generators reference the same Nix derivations, ensuring:
+- ✅ Identical binary paths
+- ✅ Same versions
+- ✅ Same patches and configurations
+- ✅ Zero possibility of drift
 
 ### Buck2 Configuration
 
@@ -196,7 +288,17 @@ system_cxx_toolchain(name = "cxx", visibility = ["PUBLIC"])
   execution_platforms = prelude//platforms:default
 ```
 
-This setup allows Buck2 to find and use the toolchains provided by Nix in the development environment.
+This setup allows Buck2 to find and use the toolchains provided by Nix in the development environment. The critical difference from traditional "system toolchains" is that these paths are **generated and guaranteed** to match the shell environment, not just assumed to be compatible.
+
+### Caching Compatibility
+
+A crucial aspect of this architecture is its compatibility with Buck2's caching mechanism. Nix store paths are **content-addressed**, meaning the path itself changes whenever the toolchain changes (version updates, patches, configuration). This property is ideal for Buck2 caching:
+
+- **Automatic cache invalidation**: When a toolchain changes, the Nix store path changes, and Buck2 automatically invalidates affected cache entries
+- **Stable cache keys**: Identical toolchains produce identical Nix store paths, enabling reliable cache sharing
+- **Remote caching**: Teams can share cached artifacts because all developers using the same `flake.lock` get identical toolchain paths
+
+See [Toolchain Synchronization - Buck2 Caching](./design/toolchain-synchronization.md#buck2-caching-and-toolchain-compatibility) for detailed analysis.
 
 ## Third-Party Dependency Management
 
@@ -491,30 +593,63 @@ The mdbook rule demonstrates how the hybrid Nix + Buck2 architecture delivers on
 - Automated documentation builds integrated with monorepo workflow
 
 🚧 **In Progress:**
+- Toolchain synchronization architecture design
 - Additional example projects for other tools and languages
 
-📋 **Planned:**
+📋 **Planned (Toolchain Synchronization):**
+- `toolchain.toml` schema definition and parser
+- Nix generator for Buck2 toolchain files
+- Shell environment generator integrated with toolchain config
+- Custom Buck2 prelude fork with system toolchain integration
+- External cell for build utilities (gazelle-like, reindeer-like tools)
+
+📋 **Planned (Dependency Management):**
 - Nix-based dependency management implementation
-- Language-specific bridge layer components
+- Language-specific bridge layer components (GOPROXY, Cargo registry, PyPI mirror)
 - Advanced Buck2 rule customizations
 - CI/CD pipeline integration
+
+See [Toolchain Synchronization Design Document](./design/toolchain-synchronization.md) for detailed implementation roadmap.
 
 ### File Organization
 
 ```
 src/
+├── toolchain.toml              # [Planned] Single source of truth for toolchains
 ├── docs/
 │   ├── src/                    # Documentation source
 │   ├── book.toml               # mdbook configuration
 │   └── BUCK                    # Documentation build target
 ├── nix/
 │   ├── shell.nix               # Development environment
+│   ├── toolchain.nix           # [Planned] Backend-specific toolchain config
+│   ├── generators/             # [Planned] Code generators
+│   │   ├── shell.nix           # Shell environment generator
+│   │   ├── buck2.nix           # Buck2 toolchain generator
+│   │   └── prelude.nix         # Prelude customization generator
+│   ├── toolchains/             # [Planned] Per-language derivations
+│   │   ├── go.nix
+│   │   ├── rust.nix
+│   │   └── python.nix
+│   ├── cells/                  # [Planned] External utility cell
+│   │   └── tooling/
 │   ├── dependencies/           # [Planned] Centralized deps
 │   └── bridge/                 # [Planned] Proxy implementations
 ├── toolchains/
-│   ├── mdbook/
-│   │   └── mdbook.bzl          # Custom mdbook Buck2 rule
-│   └── BUCK                    # System toolchain definitions
+│   ├── BUCK                    # [Generated] System toolchain definitions
+│   ├── go/
+│   │   ├── BUCK                # [Generated] Go toolchain
+│   │   └── toolchain.bzl       # [Generated] Go toolchain rules
+│   ├── rust/
+│   │   ├── BUCK                # [Generated] Rust toolchain
+│   │   └── toolchain.bzl       # [Generated] Rust toolchain rules
+│   └── mdbook/
+│       └── mdbook.bzl          # Custom mdbook Buck2 rule
+├── prelude/                    # [Planned] Forked Buck2 prelude
+│   ├── rust/
+│   ├── go/
+│   └── toolchains/
+│       └── register.bzl        # Auto-generated toolchain registration
 ├── experimental/               # Example projects
 │   ├── rs-hello-world/
 │   └── go-hello-world/
@@ -575,3 +710,5 @@ src/
 ---
 
 This architecture represents a thoughtful balance between the benefits of monorepo development and the importance of ecosystem compatibility, providing a foundation for scalable, maintainable, and developer-friendly software development.
+
+The key innovation is **guaranteed toolchain synchronization** through a single source of truth configuration that eliminates the traditional "two toolchains" problem. By having both shell and Buck2 reference identical Nix derivations, we ensure developers never encounter "works on my machine" issues caused by toolchain version drift. See [Toolchain Synchronization](./design/toolchain-synchronization.md) for the complete design.
