@@ -24,3 +24,7 @@
 
 [build]
   execution_platforms = prelude//platforms:default
+
+[project]
+  # when using jujutsu
+  ignore = .jj
