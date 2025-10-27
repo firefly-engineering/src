@@ -41,6 +41,65 @@ Result: "Works on my machine" problems
 
 ## Solution Architecture
 
+### Distribution Model
+
+This solution is packaged as a **reusable Nix flake module** that other repositories can import. This enables:
+
+- **Turnkey adoption**: Downstream repos just add flake input + create toolchain.toml
+- **Centralized maintenance**: Registry updates benefit all users
+- **Customization**: Repos can override default registry or extend it
+- **Zero vendor lock-in**: Solution is portable across repositories
+
+**Evolution Path**:
+
+1. **Initial Development** (this repository): Prototype and validate the solution with real use cases
+2. **Extraction** (future): Split into TWO standalone repositories for independent versioning and broader adoption:
+   - **`turnkey`**: Core synchronization mechanism (generic, no versions)
+   - **`toolchain-registry`**: Curated toolchain version catalog (data)
+3. **Reference Implementation**: This repository becomes a downstream consumer, demonstrating best practices
+
+This allows rapid iteration while maintaining clean separation between mechanism and data long-term.
+
+**Example Downstream Usage** (after extraction):
+```nix
+# flake.nix in downstream repo
+{
+  inputs = {
+    turnkey.url = "github:firefly-engineering/turnkey";
+    toolchain-registry.url = "github:firefly-engineering/toolchain-registry";
+  };
+
+  outputs = { self, turnkey, toolchain-registry, ... }: {
+    devShells.default = turnkey.lib.mkShell {
+      # Use community-maintained registry
+      registry = toolchain-registry.registry;
+
+      # Or use your own registry
+      # registry = ./my-custom-registry.nix;
+
+      # Or extend the community registry
+      # registry = turnkey.lib.extendRegistry
+      #   toolchain-registry.registry
+      #   ./my-additions.nix;
+    };
+  };
+}
+```
+
+Then create `toolchain.toml`:
+```toml
+[go]
+version = "1.21.5"
+```
+
+And profit - both shell and Buck2 use synchronized toolchains!
+
+**Why Two Repositories?**
+- **Mechanism vs. Data**: Core logic separate from version catalog
+- **Independent Versioning**: Registry updates (new Go version) don't require module changes
+- **Flexibility**: Use `turnkey` with any registry (corporate, community, custom)
+- **Community Contributions**: Easy to contribute new versions to registry without understanding mechanism
+
 ### High-Level Design
 
 ```
@@ -997,6 +1056,14 @@ This separation provides:
 - **Guaranteed sync**: Resolution happens once, used for both shell and Buck2
 
 The layered configuration approach provides flexibility for organizations at different maturity levels, while the backend abstraction ensures the solution can evolve with changing ecosystem tools (Nix → mise → Docker).
+
+**Reusable Two-Repository Architecture**: By splitting into mechanism (`turnkey`) and data (`toolchain-registry`), organizations can:
+- Import the core module into any repository with minimal configuration
+- Use the community-maintained registry or bring their own
+- Benefit from registry updates without touching the core mechanism
+- Extend or override the default registry for organization-specific needs
+- Maintain zero vendor lock-in (solution is completely portable)
+- Contribute to registry without understanding mechanism internals
 
 The key innovations are:
 

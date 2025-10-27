@@ -4,12 +4,182 @@ This document tracks the implementation roadmap for the [Toolchain Synchronizati
 
 ## Overview
 
-The goal is to implement a registry-based toolchain resolution system that guarantees synchronization between native tooling (shell environment) and Buck2 builds. The source of truth consists of:
+The goal is to implement a registry-based toolchain resolution system that guarantees synchronization between native tooling (shell environment) and Buck2 builds. This will be packaged as a **reusable Nix flake module** that other repositories can import.
 
-1. **`toolchain.toml`**: High-level declaration of toolchain versions
-2. **`nix/toolchains/registry.nix`**: Resolution mechanism mapping versions to Nix derivations
+### Evolution Path
+
+**Phase 0-7**: Develop the solution within this repository
+- Prototype and iterate quickly
+- Use this repo as a reference implementation
+- Validate approach with real use cases
+
+**Phase 8**: Extract into TWO standalone repositories
+
+1. **`firefly-engineering/turnkey`**: Core toolchain synchronization module
+   - Generic resolution mechanism
+   - Shell environment generation
+   - Buck2 config generation
+   - Registry interface/API
+   - **No toolchain versions** - just the mechanism
+
+2. **`firefly-engineering/toolchain-registry`**: Default toolchain registry
+   - Curated toolchain versions (Go, Rust, Python, etc.)
+   - Patches and customizations
+   - Metadata and documentation
+   - Can be used with `turnkey` or replaced
+
+**Final State**: This repository becomes a downstream consumer
+- Imports both `turnkey` (module) and `toolchain-registry` (default versions)
+- Demonstrates reference implementation
+- May provide custom registry overrides for Firefly-specific needs
+
+This separation allows:
+- ✅ **Mechanism vs. Data**: Core logic separate from version catalog
+- ✅ **Independent Versioning**: Module updates don't require registry updates and vice versa
+- ✅ **Custom Registries**: Organizations can use turnkey with their own registries
+- ✅ **Community Maintenance**: Registry can accept community contributions for new versions
+
+### User Experience (Target State)
+
+**Note**: These examples show the target user experience after extraction to a standalone repository (Phase 8). During initial development (Phases 0-7), this repository will contain the module code locally.
+
+For downstream repositories using the extracted solution:
+
+1. **Import the modules** in their `flake.nix`:
+   ```nix
+   # After Phase 8 extraction (two repositories):
+   inputs.turnkey.url = "github:firefly-engineering/turnkey";
+   inputs.toolchain-registry.url = "github:firefly-engineering/toolchain-registry";
+
+   # During development (Phases 0-7), this repo contains everything:
+   # inputs.firefly-toolchains.url = "github:firefly-engineering/src";
+   ```
+
+2. **Configure** in `flake.nix`:
+   ```nix
+   # Using default registry
+   devShells.default = turnkey.lib.mkDevShell {
+     system = "x86_64-linux";
+     registry = toolchain-registry.registry;  # Use default registry
+   };
+
+   # Or with custom registry
+   devShells.default = turnkey.lib.mkDevShell {
+     system = "x86_64-linux";
+     registry = ./my-custom-registry.nix;  # Override with custom
+   };
+
+   # Or extend default registry
+   devShells.default = turnkey.lib.mkDevShell {
+     system = "x86_64-linux";
+     registry = turnkey.lib.extendRegistry
+       toolchain-registry.registry
+       ./my-additions.nix;
+   };
+   ```
+
+3. **Define toolchains** in local `toolchain.toml`:
+   ```toml
+   [go]
+   version = "1.21.5"
+   ```
+
+4. **Profit!** - Both shell and Buck2 automatically use synchronized toolchains
+
+### Complete Example
+
+**Downstream repository structure**:
+```
+my-app/
+├── flake.nix              # Imports firefly-toolchains module
+├── toolchain.toml         # Declares: go = "1.21.5"
+├── .buckconfig
+├── experimental/
+│   └── my-service/
+│       ├── BUCK
+│       ├── main.go
+│       └── go.mod
+```
+
+**Full flake.nix**:
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+    # After extraction (Phase 8) - Two separate repos:
+    turnkey.url = "github:firefly-engineering/turnkey";
+    toolchain-registry.url = "github:firefly-engineering/toolchain-registry";
+
+    # During development (Phases 0-7) - Single repo:
+    # firefly-toolchains.url = "github:firefly-engineering/src";
+  };
+
+  outputs = { self, nixpkgs, turnkey, toolchain-registry }: {
+    devShells.x86_64-linux.default = turnkey.lib.mkDevShell {
+      system = "x86_64-linux";
+      registry = toolchain-registry.registry;  # Use community-maintained registry
+      # toolchain.toml is automatically found at ./toolchain.toml
+    };
+  };
+}
+```
+
+**Developer workflow**:
+```bash
+# Clone repo
+git clone https://github.com/myorg/my-app
+cd my-app
+
+# Enter shell (first time: downloads Nix dependencies)
+nix develop
+
+# Verify toolchains
+go version                    # go version go1.21.5 linux/amd64
+which go                      # /nix/store/abc123.../bin/go
+buck2 audit config go_bin     # /nix/store/abc123.../bin/go  ✅ Same!
+
+# Build with native tools
+cd experimental/my-service
+go build
+go test
+
+# Build with Buck2
+buck2 build //experimental/my-service:my-service
+buck2 test //experimental/my-service:...
+
+# Both use identical Go binary!
+```
+
+### Architecture Components
+
+The complete system consists of three parts:
+
+1. **`toolchain.toml`**: High-level declaration of toolchain versions (per-repository, local to each project)
+   ```toml
+   [go]
+   version = "1.21.5"
+   ```
+
+2. **`turnkey` module**: Core synchronization mechanism (github:firefly-engineering/turnkey)
+   - Resolution logic: `toolchain.toml` + registry → derivations
+   - Shell environment generation
+   - Buck2 config generation
+   - Registry interface/API
+   - **No toolchain versions** - completely generic
+
+3. **`toolchain-registry`**: Version catalog (github:firefly-engineering/toolchain-registry)
+   - Curated toolchain versions for all languages
+   - Patches and customizations
+   - Can be replaced or extended by users
+   - Community-maintained
 
 Both the development shell and Buck2 toolchain configurations are generated from the same resolved derivations, ensuring identical binaries.
+
+**Key Insight**: The mechanism (`turnkey`) and data (`toolchain-registry`) are separate, allowing:
+- Organizations to use `turnkey` with their own registries
+- Community contributions to `toolchain-registry` without touching core logic
+- Independent versioning (registry updates don't require module updates)
 
 ## Current Status
 
@@ -17,146 +187,188 @@ Both the development shell and Buck2 toolchain configurations are generated from
 - [x] Documentation updated (architecture.md, introduction.md)
 - [ ] Implementation not started
 
-## Phase 1: Core Infrastructure
+## Phase 0: Flake Module Architecture
 
-**Goal**: Establish foundational configuration and generation pipeline with registry-based resolution.
+**Goal**: Create the reusable Nix flake module infrastructure that other repositories can import.
+
+**Important**: Design module for eventual extraction (Phase 8). Keep module code self-contained and avoid dependencies on this repository's specific structure.
 
 **Success Criteria**:
-- [ ] `toolchain.toml` can declare toolchain versions
-- [ ] Registry resolves versions to Nix derivations
-- [ ] Shell environment includes resolved toolchains
-- [ ] Buck2 toolchain files are generated with Nix store paths
-- [ ] `which go` and `buck2 audit config go_bin` return identical paths
+- [ ] Flake module can be imported by downstream repos
+- [ ] Module provides default registry
+- [ ] Module exposes configuration options
+- [ ] Module generates both shell and Buck2 configs
+- [ ] Module code is self-contained and portable
 
-### 1.1 Schema Definition
+### 0.1 Flake Module Structure
 
-- [ ] Define `toolchain.toml` schema
-  - [ ] Create schema version field
-  - [ ] Define toolchain sections (go, rust, python, etc.)
-  - [ ] Define version field format
-  - [ ] Add validation rules
-  - [ ] Document schema in `docs/src/`
+- [ ] Create `nix/modules/` directory structure
+- [ ] Create `nix/modules/toolchains/default.nix` as main module
+- [ ] Define module interface/API
+  - [ ] `firefly.toolchains.registry` - Path to registry or use default
+  - [ ] `firefly.toolchains.declarationFile` - Path to toolchain.toml (default: ./toolchain.toml)
+  - [ ] `firefly.toolchains.buck2.enable` - Enable Buck2 config generation (default: true)
 
-- [ ] Create initial `toolchain.toml` at repository root
-  ```toml
-  [toolchain]
-  schema_version = "1.0"
-
-  [go]
-  version = "1.21.5"
-
-  [rust]
-  version = "1.75.0"
-
-  [python]
-  version = "3.11"
-  ```
-
-### 1.2 Toolchain Registry
-
-- [ ] Create `nix/toolchains/` directory structure
-- [ ] Implement `nix/toolchains/registry.nix`
-  - [ ] Define registry schema (version → { package, patches?, metadata? })
-  - [ ] Add Go toolchain entries (1.21.5, 1.22.0)
-  - [ ] Add Rust toolchain entries (1.75.0, 1.76.0)
-  - [ ] Add Python toolchain entries (3.11, 3.12)
-  - [ ] Add metadata fields for debugging (registry_version, description)
-
-- [ ] Create example registry entry with patch
+- [ ] Export module in root `flake.nix`
   ```nix
-  go."1.21.5" = {
-    package = pkgs.go_1_21;
-    patches = [ ./patches/example.patch ];
-    metadata = {
-      registry_version = "2024-01-15";
-      description = "Go 1.21.5 with example patch";
-    };
+  outputs = { self, nixpkgs, ... }: {
+    nixosModules.toolchains = import ./nix/modules/toolchains;
+    # or for flake-parts:
+    flakeModules.toolchains = import ./nix/modules/toolchains;
   };
   ```
 
-### 1.3 Resolution Layer
+### 0.2 Default Registry
 
-- [ ] Create `nix/generators/` directory
-- [ ] Implement `nix/generators/resolve.nix`
-  - [ ] Parse `toolchain.toml` (use `lib.importTOML`)
-  - [ ] Load `nix/toolchains/registry.nix`
-  - [ ] Resolve each declared toolchain version
-  - [ ] Handle missing versions with clear error messages
-  - [ ] Return resolved derivations structure
+- [ ] Create `nix/modules/toolchains/registry-default.nix`
+  - [ ] Include commonly-used Go versions
+  - [ ] Include commonly-used Rust versions
+  - [ ] Include commonly-used Python versions
+  - [ ] Include commonly-used C/C++ toolchains
+  - [ ] Document versioning policy for default registry
 
-- [ ] Add validation
-  - [ ] Check that declared versions exist in registry
-  - [ ] Verify derivations are valid
-  - [ ] Provide helpful error messages
+- [ ] Make registry overridable
+  - [ ] Allow downstream repos to provide custom registry
+  - [ ] Allow downstream repos to extend default registry
+  - [ ] Document registry extension patterns
 
-### 1.4 Shell Environment Generation
+### 0.3 Module Implementation
 
-- [ ] Update `nix/shell.nix` to use resolved toolchains
-  - [ ] Import resolved toolchains from `resolve.nix`
-  - [ ] Add resolved packages to `devShell.packages`
-  - [ ] Remove hardcoded language tool versions
+- [ ] Implement toolchain resolution in module
+  - [ ] Read toolchain.toml from configured path
+  - [ ] Load registry (default or custom)
+  - [ ] Resolve versions to derivations
+  - [ ] Handle missing versions gracefully
 
-- [ ] Update `flake.nix` to integrate resolution layer
-  - [ ] Wire up toolchain resolution
-  - [ ] Ensure `nix develop` uses resolved toolchains
+- [ ] Implement shell environment generation
+  - [ ] Add resolved toolchains to devShell.packages
+  - [ ] Set up environment variables if needed
+  - [ ] Add any required shell hooks
 
-- [ ] Test shell environment
-  - [ ] Verify `nix develop` succeeds
-  - [ ] Check `which go` points to Nix store
-  - [ ] Verify `go version` matches declared version
-  - [ ] Repeat for rust, python
+- [ ] Implement Buck2 config generation
+  - [ ] Generate toolchains/BUCK file
+  - [ ] Generate per-language BUCK files
+  - [ ] Make generation optional via config
+  - [ ] Add generation hooks
 
-### 1.5 Buck2 Toolchain Generation
+### 0.4 Documentation for Module Users
 
-- [ ] Implement `nix/generators/buck2.nix`
-  - [ ] Accept resolved toolchains as input
-  - [ ] Generate `toolchains/BUCK` with system toolchain definitions
-  - [ ] Use full Nix store paths in generated config
-  - [ ] Add "DO NOT EDIT MANUALLY" header
-  - [ ] Include generation timestamp and source info
+- [ ] Create `docs/src/user-guide/` directory
+- [ ] Write "Getting Started" guide for downstream repos
+  - [ ] How to add flake input
+  - [ ] How to import module
+  - [ ] How to create toolchain.toml
+  - [ ] How to verify setup
 
-- [ ] Generate per-language toolchain files
-  - [ ] `toolchains/go/BUCK` with `system_go_toolchain`
-  - [ ] `toolchains/rust/BUCK` with `system_rust_toolchain`
-  - [ ] `toolchains/python/BUCK` with `system_python_bootstrap_toolchain`
+- [ ] Write "Configuration" guide
+  - [ ] How to override default registry
+  - [ ] How to extend default registry
+  - [ ] How to customize Buck2 generation
 
-- [ ] Add toolchain fingerprinting (optional, for debugging)
-  - [ ] Extract Nix derivation hash
-  - [ ] Include as `fingerprint` attribute in generated BUCK files
+- [ ] Write "Custom Registry" guide
+  - [ ] Registry schema explanation
+  - [ ] How to add custom versions
+  - [ ] How to apply patches
+  - [ ] Examples
 
-### 1.6 Integration and Testing
+### 0.5 Self-Hosting Test
 
-- [ ] Create generation script/hook
-  - [ ] Add `nix/generate-toolchains.sh` script
-  - [ ] Integrate with `nix develop` via devenv hooks
-  - [ ] Auto-regenerate Buck2 configs when entering shell
+- [ ] Use module in this repository (dog-fooding)
+  - [ ] Import module from local path
+  - [ ] Create toolchain.toml for this repo
+  - [ ] Verify shell works
+  - [ ] Verify Buck2 configs are generated
 
-- [ ] Update `.gitignore`
-  - [ ] Add `toolchains/BUCK` (generated)
-  - [ ] Add `toolchains/*/BUCK` (generated)
-  - [ ] Document that these are generated files
+- [ ] Test module override capabilities
+  - [ ] Test custom registry path
+  - [ ] Test declarationFile override
+  - [ ] Test buck2.enable = false
 
-- [ ] Validation tests
-  - [ ] Script to compare shell paths vs Buck2 config paths
+## Phase 1: Refinement and Testing
+
+**Goal**: Refine the module implementation from Phase 0 and ensure it works robustly.
+
+**Note**: This phase builds on Phase 0. By this point, the basic module architecture should be in place. Phase 1 focuses on refinement, edge case handling, and comprehensive testing.
+
+**Success Criteria**:
+- [ ] Module works in multiple test scenarios
+- [ ] Error handling is comprehensive
+- [ ] Documentation is complete and accurate
+- [ ] `which go` and `buck2 audit config go_bin` return identical paths
+- [ ] Module is ready for external users
+
+### 1.1 Error Handling and Edge Cases
+
+- [ ] Handle missing toolchain.toml
+  - [ ] Provide clear error message
+  - [ ] Suggest creating from template
+
+- [ ] Handle unknown toolchain versions
+  - [ ] List available versions in error message
+  - [ ] Suggest checking registry or updating
+
+- [ ] Handle malformed toolchain.toml
+  - [ ] TOML parsing errors with line numbers
+  - [ ] Schema validation errors with helpful messages
+
+- [ ] Handle registry errors
+  - [ ] Missing registry file
+  - [ ] Invalid registry format
+  - [ ] Derivation build failures
+
+### 1.2 Validation and Testing
+
+- [ ] Create validation script
+  - [ ] Compare shell paths vs Buck2 config paths
   - [ ] Test that `which go` == `buck2 audit config go_bin`
-  - [ ] Verify cache invalidation on version change
+  - [ ] Report any mismatches
 
-- [ ] Update documentation
-  - [ ] Document generation workflow in `docs/src/architecture.md`
-  - [ ] Add troubleshooting guide
-  - [ ] Update getting started guide
+- [ ] Test toolchain version changes
+  - [ ] Change version in toolchain.toml
+  - [ ] Re-enter shell
+  - [ ] Verify new version is active
+  - [ ] Verify Buck2 config updated
 
-### 1.7 Example Project Testing
+- [ ] Test with existing example projects
+  - [ ] `experimental/rs-hello-world`: both cargo and buck2 builds
+  - [ ] `experimental/go-hello-world`: both go and buck2 builds
+  - [ ] Verify identical behavior
 
-- [ ] Test with existing `experimental/rs-hello-world`
-  - [ ] Verify builds work with generated toolchains
-  - [ ] Test both `cargo build` and `buck2 build`
-  - [ ] Confirm identical behavior
+### 1.3 Downstream Repository Testing
 
-- [ ] Test with `experimental/go-hello-world`
-  - [ ] Verify builds work with generated toolchains
-  - [ ] Test both `go build` and `buck2 build`
-  - [ ] Confirm identical behavior
+- [ ] Create test downstream repository
+  - [ ] Import this repo as flake input
+  - [ ] Use module with default registry
+  - [ ] Create simple toolchain.toml
+  - [ ] Verify shell and Buck2 work
+
+- [ ] Test custom registry in downstream
+  - [ ] Create custom registry file
+  - [ ] Override default registry
+  - [ ] Verify custom versions work
+
+- [ ] Test registry extension in downstream
+  - [ ] Extend default registry with custom versions
+  - [ ] Verify both default and custom versions work
+
+### 1.4 Documentation Polish
+
+- [ ] Review and update all user-facing docs
+  - [ ] Getting started guide
+  - [ ] Configuration reference
+  - [ ] Custom registry guide
+  - [ ] Troubleshooting guide
+
+- [ ] Add examples
+  - [ ] Minimal example
+  - [ ] Custom registry example
+  - [ ] Multi-language example
+  - [ ] Patched toolchain example
+
+- [ ] Add API reference
+  - [ ] Module options documentation
+  - [ ] Registry schema documentation
+  - [ ] toolchain.toml schema documentation
 
 ## Phase 2: Buck2 Caching Validation
 
@@ -399,14 +611,209 @@ Both the development shell and Buck2 toolchain configurations are generated from
   - [ ] How to switch backends
   - [ ] Migration guide between backends
 
+## Phase 8: Repository Extraction and Migration
+
+**Goal**: Extract toolchain synchronization solution into TWO standalone repositories (mechanism + registry), making this repo a downstream consumer.
+
+**Success Criteria**:
+- [ ] `turnkey` repo contains core mechanism
+- [ ] `toolchain-registry` repo contains version catalog
+- [ ] This repository successfully imports and uses both extracted repos
+- [ ] No functionality loss during migration
+- [ ] Clear separation: mechanism vs. data
+
+### 8.1 Preparation
+
+- [ ] Review current implementation for portability
+  - [ ] Identify module code (goes to turnkey)
+  - [ ] Identify registry code (goes to toolchain-registry)
+  - [ ] Identify any repo-specific assumptions
+  - [ ] Document dependencies between mechanism and registry
+
+- [ ] Plan repository structures
+  - [ ] `firefly-engineering/turnkey`: Module structure
+  - [ ] `firefly-engineering/toolchain-registry`: Registry structure
+  - [ ] Plan versioning strategy (semantic versioning for both)
+
+### 8.2 Create Turnkey Repository (Core Mechanism)
+
+- [ ] Create `firefly-engineering/turnkey` repository
+  - [ ] Set up GitHub repository
+  - [ ] Initialize with appropriate license (MIT or Apache 2.0)
+  - [ ] Set up basic CI/CD
+
+- [ ] Move mechanism code
+  - [ ] Move `nix/modules/toolchains/` (without registry)
+  - [ ] Move resolution logic
+  - [ ] Move shell generation logic
+  - [ ] Move Buck2 config generation logic
+  - [ ] Define registry interface/API
+
+- [ ] Set up documentation
+  - [ ] Create README explaining "what" and "why"
+  - [ ] Document registry interface
+  - [ ] Add usage examples (with custom registries)
+  - [ ] Set up mdbook for comprehensive docs
+
+### 8.3 Create Toolchain Registry Repository (Version Catalog)
+
+- [ ] Create `firefly-engineering/toolchain-registry` repository
+  - [ ] Set up GitHub repository
+  - [ ] Initialize with appropriate license
+  - [ ] Set up CI/CD for testing registry entries
+
+- [ ] Move registry code
+  - [ ] Move default registry definitions
+  - [ ] Move toolchain version entries
+  - [ ] Move patches directory
+  - [ ] Organize by language/tool
+
+- [ ] Set up registry structure
+  ```
+  toolchain-registry/
+  ├── registry.nix        # Main registry export
+  ├── go/
+  │   ├── versions.nix    # Go versions
+  │   └── patches/        # Go patches
+  ├── rust/
+  │   ├── versions.nix
+  │   └── patches/
+  └── python/
+      ├── versions.nix
+      └── patches/
+  ```
+
+- [ ] Set up documentation
+  - [ ] README with available versions
+  - [ ] Contribution guide for adding versions
+  - [ ] Testing guide for registry entries
+  - [ ] Changelog for registry updates
+
+### 8.4 Migration of This Repository
+
+- [ ] Update this repo's `flake.nix`
+  - [ ] Remove local module code
+  - [ ] Add flake input for `turnkey`
+  - [ ] Add flake input for `toolchain-registry`
+  - [ ] Update to use external modules
+
+- [ ] Create/update `toolchain.toml`
+  - [ ] Verify format is compatible
+  - [ ] Document versions used
+
+- [ ] Test migration
+  - [ ] Verify `nix develop` still works
+  - [ ] Verify Buck2 config generation works
+  - [ ] Verify all example projects build
+  - [ ] Compare behavior before/after migration
+  - [ ] Test registry override capability
+
+- [ ] Update documentation in this repo
+  - [ ] Update architecture docs to reference external modules
+  - [ ] Add "Reference Implementation" guide
+  - [ ] Keep design docs as historical reference
+  - [ ] Document why we use specific registry versions
+
+- [ ] Optional: Add Firefly-specific registry overrides
+  - [ ] Create `nix/custom-registry.nix` if needed
+  - [ ] Document custom versions/patches
+  - [ ] Show how to extend community registry
+
+### 8.5 Cleanup
+
+- [ ] Remove now-redundant code from this repo
+  - [ ] Archive old module code
+  - [ ] Remove old registry code
+  - [ ] Clean up nix/ directory structure
+  - [ ] Update .gitignore if needed
+
+- [ ] Document the split
+  - [ ] Update README to explain relationship with both repos
+  - [ ] Add badges/links to turnkey and toolchain-registry
+  - [ ] Document benefits of two-repo architecture
+
+### 8.6 Publishing Both Repositories
+
+**Turnkey (Mechanism)**:
+- [ ] Tag v1.0.0 release
+- [ ] Create comprehensive README
+- [ ] Emphasize registry flexibility
+- [ ] Provide examples with different registries
+- [ ] Set up GitHub Releases
+- [ ] Configure branch protection
+
+**Toolchain Registry (Data)**:
+- [ ] Tag v1.0.0 release
+- [ ] Create README listing all versions
+- [ ] Set up automated testing for registry entries
+- [ ] Create contribution guide
+- [ ] Set up GitHub Releases
+- [ ] Enable community PRs for new versions
+
+**Discoverability**:
+- [ ] Submit both to Nix flake registries
+- [ ] Create announcement blog post explaining architecture
+- [ ] Share in Nix community (Discourse, Reddit)
+- [ ] Share in Buck2 community
+- [ ] Create example repos using both
+
+## Phase 9: Publishing and Distribution
+
+**Goal**: Ongoing maintenance and community growth for standalone toolchain solution.
+
+**Note**: This phase assumes the solution has been extracted (Phase 8).
+
+**Success Criteria**:
+- [ ] Module is published and discoverable
+- [ ] Clear onboarding for new users
+- [ ] Support channels established
+
+### 8.1 Publishing
+
+- [ ] Tag stable release
+  - [ ] Version 1.0.0 when ready
+  - [ ] Semantic versioning for future releases
+
+- [ ] Announce in relevant communities
+  - [ ] Nix community (Discourse, Reddit)
+  - [ ] Buck2 community
+  - [ ] Create blog post explaining benefits
+
+### 8.2 Discoverability
+
+- [ ] Add to Nix flake registries (if appropriate)
+- [ ] Create example repositories
+  - [ ] Minimal Go project
+  - [ ] Minimal Rust project
+  - [ ] Multi-language project
+
+### 8.3 Support and Maintenance
+
+- [ ] Create issue templates
+  - [ ] Bug report template
+  - [ ] Feature request template
+  - [ ] Help request template
+
+- [ ] Document contribution guidelines
+  - [ ] How to add new toolchain versions to default registry
+  - [ ] How to test changes
+  - [ ] Code review process
+
+- [ ] Establish support channels
+  - [ ] GitHub Discussions for Q&A
+  - [ ] GitHub Issues for bugs/features
+
 ## Documentation Tasks
 
 - [ ] Update `docs/src/architecture.md` with implementation notes
+- [ ] Create tutorial: "Getting Started - Using the Module"
 - [ ] Create tutorial: "Adding a new toolchain version"
 - [ ] Create tutorial: "Applying a security patch"
+- [ ] Create tutorial: "Creating a custom registry"
 - [ ] Create troubleshooting guide
 - [ ] Create performance optimization guide
 - [ ] Add FAQ section
+- [ ] Add "Why use this?" comparison with alternatives
 
 ## Testing and Validation
 
@@ -418,11 +825,41 @@ Both the development shell and Buck2 toolchain configurations are generated from
 
 ## Future Enhancements (Backlog)
 
+### For Standalone Project (Post-Extraction)
+
 - [ ] Multi-platform support (Linux, macOS, different architectures)
 - [ ] Toolchain composition (custom gopls with standard go)
 - [ ] Automatic registry updates from upstream releases
 - [ ] Toolchain version pinning for reproducibility audits
 - [ ] Support for proprietary/internal toolchains
+- [ ] Integration with other build systems (Bazel, Please Build)
+- [ ] Web UI for browsing available toolchain versions
+- [ ] Automatic security advisory notifications
+
+### Repository Naming
+
+**Decided Architecture** (as of Phase 8 planning):
+
+1. **`firefly-engineering/turnkey`**
+   - Name emphasizes ease of use ("turnkey solution")
+   - Generic enough for community adoption
+   - Not tied to specific build system (future: support Bazel, etc.)
+
+2. **`firefly-engineering/toolchain-registry`**
+   - Descriptive name, clear purpose
+   - Emphasizes that it's data, not mechanism
+   - Open to community contributions
+
+**Alternative names considered** (archived for reference):
+- `nix-buck2-sync` - too specific to implementation
+- `hermetic-toolchains` - good but less memorable
+- `nixbuck` - too cute, unclear meaning
+
+**Why "turnkey"?**:
+- Emphasizes the user experience: it "just works"
+- Not locked to Buck2 or Nix (future extensibility)
+- Memorable and searchable
+- Communicates value proposition clearly
 
 ---
 
@@ -436,7 +873,16 @@ Both the development shell and Buck2 toolchain configurations are generated from
 
 ## References
 
+### This Repository
 - [Toolchain Synchronization Design](./docs/src/design/toolchain-synchronization.md)
 - [Architecture Overview](./docs/src/architecture.md)
+
+### Future Standalone Project (Post Phase 8)
+- Repository: TBD (e.g., `github:firefly-engineering/firefly-buck2-toolchains`)
+- Documentation: Will be established during extraction
+
+### External
 - [Buck2 Documentation](https://buck2.build/)
+- [Buck2 GitHub](https://github.com/facebook/buck2)
 - [Nix Manual](https://nixos.org/manual/nix/stable/)
+- [Nix Flakes](https://nixos.wiki/wiki/Flakes)
