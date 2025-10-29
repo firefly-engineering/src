@@ -19,6 +19,10 @@ This section contains detailed design documents and implementation roadmaps for 
 - **[Python Dependency Management Roadmap](./python-dependency-management-roadmap.md)**: Implementation plan for Nix-based Python dependency management with local PyPI index
 - **[TypeScript Dependency Management Roadmap](./typescript-dependency-management-roadmap.md)**: Implementation plan for Nix-based TypeScript/Node.js dependency management with local npm registry and pnpm integration
 
+### Productivity
+
+- **[Remote Execution Compatibility](./remote-execution-compatibility.md)**: Approach for remote-friendly toolchain
+
 ## Purpose
 
 These documents serve to:
