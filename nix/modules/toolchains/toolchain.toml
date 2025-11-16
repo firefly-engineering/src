@@ -1,0 +1,13 @@
+# Default toolchain.toml (example/fallback)
+#
+# This file serves as an example configuration.
+# Copy this to your repository root and customize as needed.
+
+[go]
+version = "latest"
+
+[rust]
+version = "stable"
+
+[python]
+version = "3.12"
