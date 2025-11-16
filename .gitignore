@@ -3,6 +3,9 @@ buck-out/
 .buckd/
 .buckversion
 
+# Generated Buck2 toolchain configurations
+.buckconfig.toolchains
+
 # Nix artifacts
 result
 result-*
