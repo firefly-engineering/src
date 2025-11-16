@@ -1,0 +1,15 @@
+# Toolchain Synchronization Configuration
+# This file declares which toolchain versions to use for both:
+# - Development shell (nix develop)
+# - Buck2 builds
+#
+# Both environments will use the EXACT SAME toolchain binaries from the Nix store.
+
+[go]
+version = "1.23"
+
+[rust]
+version = "stable"
+
+[python]
+version = "3.12"
