@@ -28,5 +28,13 @@
         inputs.devenv.flakeModule
         (importApply ./nix { inherit (inputs) withSystem; })
       ];
+
+      flake = {
+        # Export toolchains module for use with flake-parts or direct import
+        flakeModules.toolchains = import ./nix/modules/toolchains;
+
+        # Also export as nixosModule for compatibility
+        nixosModules.toolchains = import ./nix/modules/toolchains;
+      };
     };
 }
