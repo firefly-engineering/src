@@ -11,8 +11,7 @@ load("@prelude//mdbook:mdbook.bzl", "mdbook_book")
 #   ⚠️  BUCK changes (srcs): Requires restart (Ctrl+C → buck2 run)
 mdbook_book(
     name = "docs",
-    srcs = [
-        "book.toml",
-    ] + glob(["src/**/*.md"]) + glob(["css/**/*.css"]) + glob(["js/**/*.js"]),
+    book_toml = "book.toml",
+    srcs = glob(["src/**/*.md"]) + glob(["css/**/*.css"]) + glob(["js/**/*.js"]),
     visibility = ["PUBLIC"],
 )
