@@ -1,16 +1,58 @@
-{ ... }:
+{ inputs, ... }:
 {
   perSystem =
-    { pkgs, ... }:
     {
+      pkgs,
+      lib,
+      system,
+      ...
+    }:
+    {
+      # Configure turnkey toolchain management
+      turnkey.toolchains = {
+        enable = true;
+        tellerLib = inputs.teller.lib;
+        tellerRegistry =
+          let
+            overlaidPkgs = import inputs.nixpkgs {
+              inherit system;
+              overlays = [
+                inputs.teller.overlays.default
+                inputs.toolbox.overlays.default
+              ];
+            };
+          in
+          overlaidPkgs.turnkeyRegistry;
+        declarationFiles = {
+          default = ../toolchain.toml;
+        };
+        registryExtensions = { };
+
+        # Enable Buck2 toolchain generation
+        buck2 = {
+          enable = true;
+          welcomeMessage = "Welcome to Firefly Engineering Monorepo";
+
+          # Go dependencies
+          go = {
+            enable = true;
+            depsFile = ../go-deps.toml;
+          };
+
+          # Rust dependencies
+          rust = {
+            enable = true;
+            depsFile = ../rust-deps.toml;
+          };
+        };
+      };
+
+      # Additional devenv shell configuration (agents, devcontainer)
       devenv.shells.default = {
         imports = [
-          ./devenv
+          ./devenv/agents.nix
+          ./devenv/devcontainer.nix
         ];
-
-        enterShell = ''
-          echo "🚀 Welcome to Firefly Engineering Monorepo"
-        '';
       };
     };
 }
