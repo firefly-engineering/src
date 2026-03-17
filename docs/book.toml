@@ -36,3 +36,4 @@ enable = true
 enable = true
 
 [output.linkcheck]
+warning-policy = "warn"
