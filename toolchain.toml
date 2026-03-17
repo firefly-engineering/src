@@ -14,8 +14,8 @@ python = {}
 nodejs = {}
 typescript = {}
 
-# Documentation
-mdbook = { version = "0.4.52" }  # Pinned for mdbook-admonish compatibility
+# Documentation (mdbook 0.4.52 + admonish, mermaid, footnote, graphviz)
+mdbook-toolchain = {}
 
 # Development utilities
 nix = {}

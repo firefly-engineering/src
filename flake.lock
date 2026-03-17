@@ -2159,11 +2159,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1773750257,
-        "narHash": "sha256-cfyyRKqSVVsje/BgkIS9I2G+92uz8Mhu1Y5jfrnLIA4=",
+        "lastModified": 1773751708,
+        "narHash": "sha256-8cM0kvJqKKu/ksUibNtlAsQmvOOZsYPYBTHQ91piiK0=",
         "owner": "firefly-engineering",
         "repo": "toolbox",
-        "rev": "122f3b9cdddd31e85d16b991ff69e9f4cb65ccfd",
+        "rev": "82509c32ca1b3f7fb7cfaa353c4c96bc54cdcade",
         "type": "github"
       },
       "original": {
@@ -2186,11 +2186,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1773750514,
-        "narHash": "sha256-/0WEalfKIZRvNJb2uCRcUnx4Gyfc1b20sKLNl/7OtCU=",
+        "lastModified": 1773751708,
+        "narHash": "sha256-8cM0kvJqKKu/ksUibNtlAsQmvOOZsYPYBTHQ91piiK0=",
         "owner": "firefly-engineering",
         "repo": "toolbox",
-        "rev": "c4a5f4d1369175c9f939475b49939f4d95fe5c43",
+        "rev": "82509c32ca1b3f7fb7cfaa353c4c96bc54cdcade",
         "type": "github"
       },
       "original": {
@@ -2287,10 +2287,10 @@
         "toolbox": "toolbox_2"
       },
       "locked": {
-        "lastModified": 1773750564,
-        "narHash": "sha256-V1D15T7i7E08ZyHqhb9HQDD1SUkYQ9NfEoGS2Li3zQE=",
-        "rev": "7336569a68eba9a579dbf4e45a20d41767fe62f6",
-        "revCount": 715,
+        "lastModified": 1773751736,
+        "narHash": "sha256-ZxQFsdntQk0b0n2wcGAdMtZDBOscLDlauApSD2J7aC4=",
+        "rev": "d7ea29645e0180deb8eedbfc32d6cb2799487976",
+        "revCount": 716,
         "type": "git",
         "url": "file:///Users/yann/src/github.com/firefly-engineering/turnkey"
       },

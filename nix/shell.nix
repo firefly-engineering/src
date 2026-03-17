@@ -45,13 +45,22 @@
             depsFile = ../rust-deps.toml;
           };
 
-          # mdbook preprocessors
-          mdbook.preprocessors = with pkgs; [
-            mdbook-admonish
-            mdbook-footnote
-            mdbook-graphviz
-            mdbook-linkcheck
-            mdbook-mermaid
+          # mdbook preprocessors (from toolbox's mdbook-toolchain, version-compatible)
+          mdbook.preprocessors = let
+            overlaidPkgs = import inputs.nixpkgs {
+              inherit system;
+              overlays = [
+                inputs.teller.overlays.default
+                inputs.toolbox.overlays.default
+              ];
+            };
+            registry = overlaidPkgs.turnkeyRegistry;
+            resolve = name: inputs.teller.lib.resolveTool registry name {};
+          in [
+            (resolve "mdbook-admonish")
+            (resolve "mdbook-footnote")
+            (resolve "mdbook-graphviz")
+            (resolve "mdbook-mermaid")
           ];
         };
       };

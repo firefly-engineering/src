@@ -33,4 +33,3 @@ enable = true
 
 [output.html.print]
 enable = true
-
