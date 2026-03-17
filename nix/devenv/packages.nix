@@ -11,7 +11,7 @@
     mdbook-admonish
     mdbook-footnote
     mdbook-graphviz
-    mdbook-linkcheck
+    mdbook-linkcheck2
     mdbook-mermaid
 
     # development
