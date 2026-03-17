@@ -13,7 +13,7 @@
 
     # Turnkey toolchain management (local path until repo is public)
     turnkey = {
-      url = "path:../turnkey";
+      url = "git+file:///Users/yann/src/github.com/firefly-engineering/turnkey";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-parts.follows = "flake-parts";
       inputs.devenv.follows = "devenv";
