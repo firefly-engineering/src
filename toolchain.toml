@@ -4,6 +4,7 @@
 [toolchains]
 # Build tools
 buck2 = {}
+tk = {}  # Turnkey CLI wrapper for buck2 with auto-sync
 
 # Language toolchains
 go = {}
