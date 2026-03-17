@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+members = [
+    "experimental/rs-hello-world",
+]
+
+[workspace.package]
+edition = "2021"
