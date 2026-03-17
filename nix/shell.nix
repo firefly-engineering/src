@@ -44,6 +44,15 @@
             enable = true;
             depsFile = ../rust-deps.toml;
           };
+
+          # mdbook preprocessors
+          mdbook.preprocessors = with pkgs; [
+            mdbook-admonish
+            mdbook-footnote
+            mdbook-graphviz
+            mdbook-linkcheck
+            mdbook-mermaid
+          ];
         };
       };
 
