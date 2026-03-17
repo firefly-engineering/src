@@ -1,4 +1,4 @@
-load("@toolchains//mdbook:mdbook.bzl", "mdbook")
+load("@prelude//mdbook:mdbook.bzl", "mdbook")
 
 # Build the documentation site with mdbook
 #

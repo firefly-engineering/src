@@ -2,5 +2,8 @@
 # Source: Cargo.lock
 #
 # To regenerate: rustdeps-gen -o rust-deps.toml
+#
+# Key format: deps."crate-name@version" to support multiple versions
 
 schema_version = 1
+
