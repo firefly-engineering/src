@@ -1,0 +1,27 @@
+# Toolchain declaration for Firefly Engineering Monorepo
+# Resolved by turnkey via teller + toolbox registries
+
+[toolchains]
+# Build tools
+buck2 = {}
+tk = {}  # Turnkey CLI wrapper for buck2 with auto-sync
+
+# Language toolchains
+go = {}
+rust = {}
+cargo = {}
+python = {}
+nodejs = {}
+typescript = {}
+
+# Documentation
+mdbook = {}
+
+# Data templating
+jsonnet = {}
+
+# Development utilities
+nix = {}
+jj = {}
+beads = {}
+beads-viewer = {}
