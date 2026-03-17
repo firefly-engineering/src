@@ -1,4 +1,4 @@
-load("@prelude//mdbook:mdbook.bzl", "mdbook")
+load("@prelude//mdbook:mdbook.bzl", "mdbook_book")
 
 # Build the documentation site with mdbook
 #
@@ -9,7 +9,7 @@ load("@prelude//mdbook:mdbook.bzl", "mdbook")
 # Hot-reload behavior:
 #   ✅ Content changes (.md, book.toml): Auto-reloads
 #   ⚠️  BUCK changes (srcs): Requires restart (Ctrl+C → buck2 run)
-mdbook(
+mdbook_book(
     name = "docs",
     srcs = [
         "book.toml",
