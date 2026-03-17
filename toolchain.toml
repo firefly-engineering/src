@@ -15,7 +15,7 @@ nodejs = {}
 typescript = {}
 
 # Documentation
-mdbook = {}
+mdbook = { version = "0.4.52" }  # Pinned for mdbook-admonish compatibility
 
 # Development utilities
 nix = {}
