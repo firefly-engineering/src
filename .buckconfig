@@ -1,8 +1,12 @@
+# Managed by turnkey - cells under .turnkey/ are generated on shell entry
+
 [cells]
   root = .
-  prelude = prelude
-  toolchains = toolchains
+  toolchains = .turnkey/toolchains
+  prelude = .turnkey/prelude
   none = none
+  godeps = .turnkey/godeps
+  rustdeps = .turnkey/rustdeps
 
 [cell_aliases]
   config = prelude
@@ -12,15 +16,12 @@
   fbcode_macros = none
   buck = none
 
-# Uses a copy of the prelude bundled with the buck2 binary. You can alternatively delete this
-# section and vendor a copy of the prelude to the `prelude` directory of your project.
-[external_cells]
-  prelude = bundled
-
 [parser]
   target_platform_detector_spec = target:root//...->prelude//platforms:default \
+    target:toolchains//...->prelude//platforms:default \
     target:prelude//...->prelude//platforms:default \
-    target:toolchains//...->prelude//platforms:default
+    target:godeps//...->prelude//platforms:default \
+    target:rustdeps//...->prelude//platforms:default
 
 [build]
   execution_platforms = prelude//platforms:default

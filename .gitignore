@@ -3,6 +3,9 @@ buck-out/
 .buckd/
 .buckversion
 
+# Turnkey generated cells (symlinks created on shell entry)
+.turnkey/
+
 # Nix artifacts
 result
 result-*
