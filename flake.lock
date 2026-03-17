@@ -2287,10 +2287,10 @@
         "toolbox": "toolbox_2"
       },
       "locked": {
-        "lastModified": 1773752773,
-        "narHash": "sha256-fUqIZcUsXljV5UXzdIg+005inKestBLTu2Nt8nrqtXA=",
-        "rev": "5048d2502b9a9765aa1d4cb16e52d0401db806af",
-        "revCount": 717,
+        "lastModified": 1773752897,
+        "narHash": "sha256-sbpaJnQYJn7rk/1p4QD31YmFXuU7KMDYyA/nZULNJOo=",
+        "rev": "200cdd7f29b87e9deb3e15e56226dc0e34806a6a",
+        "revCount": 718,
         "type": "git",
         "url": "file:///Users/yann/src/github.com/firefly-engineering/turnkey"
       },
