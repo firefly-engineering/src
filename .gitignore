@@ -5,6 +5,7 @@ buck-out/
 
 # Turnkey generated cells (symlinks created on shell entry)
 .turnkey/
+.buckconfig
 
 # Nix artifacts
 result

@@ -54,7 +54,7 @@ Projects can be organized anywhere in the repository. Common patterns include:
 ## Adding New Projects
 
 1. Create a directory for your project
-1. Add a `BUCK` file with your target definitions
+1. Add a `rules.star` file with your target definitions
 1. Add your source files
 1. Build with `buck2 build //your-project-path`
 
