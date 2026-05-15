@@ -410,13 +410,13 @@ Any component built in the monorepo should be extractable as a standalone projec
 ```
 experimental/
 ├── rs-hello-world/
-│   ├── BUCK                 # Buck2 build definition
+│   ├── rules.star          # Buck2 build definition
 │   ├── Cargo.toml          # Standard Rust manifest
 │   ├── src/
 │   │   └── main.rs
 │   └── .cargo/config.toml  # Points to monorepo registry
 └── go-hello-world/
-    ├── BUCK                # Buck2 build definition
+    ├── rules.star          # Buck2 build definition
     ├── go.mod              # Standard Go module
     ├── main.go
     └── .goproxy           # Points to monorepo proxy
@@ -490,7 +490,7 @@ mdbook = rule(
 )
 ```
 
-#### Build Target (`docs/BUCK`)
+#### Build Target (`docs/rules.star`)
 
 ```python
 load("@toolchains//mdbook:mdbook.bzl", "mdbook")
@@ -574,7 +574,7 @@ cd docs && mdbook build
 This implementation showcases several architectural advantages:
 
 1. **Composability**: The same `mdbook` binary works in both Buck2 and native contexts
-2. **Maintainability**: Adding new documentation files requires no BUCK file changes (glob patterns)
+2. **Maintainability**: Adding new documentation files requires no `rules.star` changes (glob patterns)
 3. **Reliability**: Buck2's dependency tracking ensures documentation stays in sync with changes
 4. **Simplicity**: The rule implementation is straightforward and follows Buck2 conventions
 
@@ -619,7 +619,7 @@ src/
 ├── docs/
 │   ├── src/                    # Documentation source
 │   ├── book.toml               # mdbook configuration
-│   └── BUCK                    # Documentation build target
+│   └── rules.star              # Documentation build target
 ├── nix/
 │   ├── shell.nix               # Development environment
 │   ├── toolchain.nix           # [Planned] Backend-specific toolchain config
@@ -654,9 +654,15 @@ src/
 │   ├── rs-hello-world/
 │   └── go-hello-world/
 ├── flake.nix                   # Main Nix flake
-├── .buckconfig                 # Buck2 configuration
-└── BUCK                        # Root build definitions
+├── .buckconfig                 # Buck2 configuration (symlink, managed by turnkey)
+└── .buckroot                   # Marks project boundary for Buck2
 ```
+
+Buck2's root cell is configured to use `rules.star` as the buildfile name (set in the
+turnkey-generated `.buckconfig`). Per-package build files therefore live as `rules.star`
+rather than `BUCK`. Generated cells under `.turnkey/` (e.g. `.turnkey/toolchains/`,
+`.turnkey/godeps/`) still use `BUCK` — Buck2's buildfile setting only applies to the
+root cell.
 
 ### Development Workflow
 
