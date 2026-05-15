@@ -1,386 +1,129 @@
 # Supply Chain Security
 
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Threat Model](#threat-model)
-3. [Nix as a Security Foundation](#nix-as-a-security-foundation)
-4. [Dependency Auditing Process](#dependency-auditing-process)
-5. [Mirror Repository Strategy](#mirror-repository-strategy)
-6. [Verification and Integrity](#verification-and-integrity)
-7. [Incident Response](#incident-response)
-8. [Implementation Guidelines](#implementation-guidelines)
-
 ## Overview
 
-Supply chain attacks have become increasingly sophisticated and prevalent, targeting the dependencies that modern software relies upon. Our Nix-based architecture provides multiple layers of protection against these threats while maintaining developer productivity and ecosystem compatibility.
-
-The key insight is that **Nix's content-addressed storage and explicit dependency pinning creates natural audit points** where security reviews can be concentrated, rather than being scattered across individual project dependency updates.
+Supply chain attacks target the dependencies modern software relies on. Nix's content-addressed storage and explicit pinning give us natural audit points where security review can be concentrated, rather than being scattered across individual project dependency updates.
 
 ## Threat Model
 
-### Attack Vectors We Address
+### In scope
 
-1. **Malicious Package Injection**
-   - Compromised upstream repositories (PyPI, crates.io, npm)
-   - Typosquatting attacks
-   - Dependency confusion attacks
+1. **Malicious package injection** — compromised upstream repositories (PyPI, crates.io, npm), typosquatting, dependency confusion.
+2. **Package compromise** — legitimate packages compromised post-publication, maintainer account takeovers, build system compromises.
+3. **Version rollback attacks** — forced downgrades to vulnerable versions, bypassing security patches.
+4. **Transitive dependency attacks** — malicious code in deep dependency trees, unexpected dependency additions.
 
-2. **Package Compromise**
-   - Legitimate packages compromised post-publication
-   - Maintainer account takeovers
-   - Build system compromises
+### Out of scope
 
-3. **Version Rollback Attacks**
-   - Forcing downgrades to vulnerable versions
-   - Bypassing security patches
-
-4. **Transitive Dependency Attacks**
-   - Malicious code in deep dependency trees
-   - Unexpected dependency additions
-
-### Attack Vectors Outside Our Scope
-
-- **Source Code Repository Compromise**: Mitigated by standard Git security practices
-- **Developer Machine Compromise**: Requires additional endpoint security measures
-- **Build System Infrastructure**: Addressed by separate CI/CD security measures
+- **Source repository compromise** — mitigated by standard Git practices and branch protection.
+- **Developer machine compromise** — requires endpoint security.
+- **Build infrastructure compromise** — addressed by CI/CD security.
 
 ## Nix as a Security Foundation
 
-### Content-Addressed Storage
+### Content-addressed storage
 
-Nix's content-addressed store provides several security benefits:
+Every derivation in `/nix/store/` is named by the hash of its build inputs. Once built, a path is immutable; any tampering changes the hash and the artifact is rejected.
 
-```nix
-# Example dependency specification with hash
-rustPlatform.buildRustPackage rec {
-  pname = "serde";
-  version = "1.0.193";
+- **Immutable references.** Built packages cannot be modified in place.
+- **Cryptographic verification.** Hash mismatches prevent execution.
+- **Reproducible builds.** Identical inputs produce identical outputs.
 
-  src = fetchCrate {
-    inherit pname version;
-    # Cryptographic hash ensures integrity
-    sha256 = "sha256-abc123def456...";
-  };
+### Explicit pinning
 
-  # All transitive dependencies also hashed
-  cargoHash = "sha256-xyz789uvw012...";
-}
-```
+`flake.lock` records the exact revision and hash of every input. Updates only happen through explicit `nix flake update`, which produces a reviewable diff. There is no dynamic version resolution at build time.
 
-**Security Properties:**
-- **Immutable References**: Once built, packages cannot be modified
-- **Cryptographic Verification**: Hash mismatches prevent execution
-- **Reproducible Builds**: Identical inputs produce identical outputs
+- **No surprise version changes** — dependencies cannot change without an explicit lock update.
+- **Transitive visibility** — every dependency is captured in the lock graph.
+- **Auditable rollbacks** — git history of `flake.lock` is the complete dependency timeline.
 
-### Explicit Dependency Pinning
+### Toolchain registry
 
-Unlike traditional package managers that resolve versions dynamically, Nix requires explicit specification of all dependencies:
+Toolchain versions resolve through `toolchain.toml` → teller → toolbox. Each entry in toolbox's registry pins an SRI hash for the source archive (and `vendorHash` for Go modules). The registry repository itself is the single review surface for toolchain updates.
 
-```nix
-# nix/dependencies/rust.nix
-{
-  serde = {
-    version = "1.0.193";
-    hash = "sha256-abc123def456...";
-    # Explicit transitive dependencies
-    dependencies = {
-      serde_derive = "1.0.193";
-    };
-  };
-}
-```
+## Dependency Auditing
 
-This eliminates several attack vectors:
-- **No Version Resolution Surprises**: Dependencies cannot change without explicit updates
-- **Transitive Visibility**: All dependencies are explicitly declared
-- **Rollback Protection**: Downgrades require intentional configuration changes
-
-## Dependency Auditing Process
-
-### Centralized Audit Points
-
-The Nix-based architecture creates natural audit checkpoints where security reviews can be concentrated:
+### Audit checkpoints
 
 ```
-Upstream Update → Nix Expression → Security Review → Monorepo Integration
-      ↓               ↓               ↓                    ↓
-   New version    Hash update    Audit process      Developer access
+Upstream update → flake.lock / deps.toml change → review → merge
+     ↓                       ↓                       ↓        ↓
+ New version            Hash update            Audit       Developer access
 ```
 
-### Audit Workflow
+### Workflow
 
-1. **Dependency Update Detection**
-   ```bash
-   # Automated monitoring for new versions
-   nix flake update --commit-lock-file
-   # Or manual updates for specific packages
-   ```
+1. **Detect.** `nix flake update` (or per-input `nix flake update <name>`) produces a `flake.lock` diff.
+2. **Assess.** Read the diff in `flake.lock` / `go-deps.toml` / `rust-deps.toml`. Check upstream release notes, CVE databases, and the diff between old and new revisions.
+3. **Approve.** Reviewer signs off on lock changes the same way they would code changes.
+4. **Integrate.** Merge to main; all projects automatically pick up the new versions on their next pull.
 
-2. **Security Assessment**
-   ```bash
-   # Review changes since last version
-   git diff flake.lock
-   # Analyze new dependencies
-   nix show-derivation .#dependency-name
-   ```
+### Checklist
 
-3. **Approval Process**
-   - Security team reviews Nix expression changes
-   - Dependency diff analysis
-   - Known vulnerability checks
-   - License compliance verification
+For each update:
 
-4. **Integration**
-   - Approved changes merged to main branch
-   - All projects automatically use new versions
-   - Rollback available via Git history
-
-### Audit Checklist
-
-For each dependency update:
-
-- [ ] **Version Legitimacy**: Verify version exists on upstream registry
-- [ ] **Hash Verification**: Confirm hash matches downloaded content
-- [ ] **Changelog Review**: Analyze changes since previous version
-- [ ] **Vulnerability Scan**: Check against known CVE databases
-- [ ] **License Compliance**: Ensure license compatibility
-- [ ] **Transitive Dependencies**: Review new or updated sub-dependencies
-- [ ] **Maintainer Verification**: Confirm legitimate maintainer published update
-
-## Mirror Repository Strategy
-
-### Architecture Overview
-
-To provide additional security layers and patch capability, we maintain mirror repositories for critical dependencies:
-
-```
-Upstream Registry → Security Review → Mirror Repository → Nix Store → Monorepo
-     (PyPI,               │              (firefly-deps/*)       │
-      crates.io,          ▼                     │               ▼
-      npm, etc.)    Patch Application           │         Build Process
-                          │                     ▼
-                          └── Patched Version ──┘
-```
-
-### Mirror Repository Structure
-
-```
-firefly-deps/
-├── rust-crates/
-│   ├── serde/
-│   │   ├── 1.0.193/           # Original version
-│   │   ├── 1.0.193-ff.1/      # Firefly-patched version
-│   │   └── patches/
-│   │       └── security-fix.patch
-│   └── tokio/
-├── go-modules/
-│   └── github.com/
-│       └── gorilla/
-│           └── mux/
-└── python-packages/
-    └── requests/
-```
-
-### Mirror Benefits
-
-1. **Change Visibility**: All modifications tracked in Git history
-2. **Patch Management**: Security fixes applied without waiting for upstream
-3. **Availability**: Resilience against upstream registry outages
-4. **Compliance**: Internal review of all code that enters the organization
-5. **Forensics**: Complete audit trail of all dependency changes
-
-### Mirror Maintenance Process
-
-```nix
-# Example: Mirroring with patches
-rustPlatform.buildRustPackage rec {
-  pname = "vulnerable-crate";
-  version = "1.0.0-ff.1";  # Firefly-patched version
-
-  src = fetchFromGitHub {
-    owner = "firefly-deps";
-    repo = "rust-crates";
-    path = "vulnerable-crate/1.0.0-ff.1";
-    sha256 = "sha256-patched-version-hash...";
-  };
-
-  # Applied patches tracked in Git
-  patches = [
-    ./patches/cve-2023-12345.patch
-  ];
-}
-```
+- [ ] Version exists on the upstream registry and matches the expected publisher.
+- [ ] Hash in the lock / deps file matches downloaded content (`nix flake check` verifies this on build).
+- [ ] Changelog reviewed for unexpected behavior.
+- [ ] Known vulnerabilities checked (e.g. `vulnix`, `cargo-audit`, language-specific scanners).
+- [ ] License is compatible.
+- [ ] Transitive dependencies in the lock diff are reviewed.
 
 ## Verification and Integrity
 
-### Multi-Layer Hash Verification
+Multiple verification points cover the lifecycle:
 
-Our architecture provides multiple verification checkpoints:
-
-1. **Download Verification**: Nix verifies source hashes during fetch
-2. **Build Verification**: Nix verifies build output hashes
-3. **Runtime Verification**: Store paths include content hashes
-4. **Mirror Verification**: Git commits provide additional integrity
-
-### Hash Chain Example
-
-```
-Original Package Hash → Mirror Repository Hash → Nix Store Hash → Runtime Path
-sha256-upstream...   → git-commit-abc123...  → sha256-build... → /nix/store/hash-name
-```
-
-### Verification Commands
+1. **Download verification** — Nix verifies source hashes during fetch.
+2. **Build verification** — Nix verifies fixed-output derivation hashes.
+3. **Runtime verification** — Store paths embed content hashes; tampering changes the path.
 
 ```bash
-# Verify package integrity
-nix store verify /nix/store/path-to-package
+# Verify a specific store path
+nix store verify /nix/store/<hash>-name
 
-# Check all store paths
+# Verify the entire store
 nix store verify --all
 
-# Compare with expected hashes
-nix show-derivation .#package | jq '.outputs'
+# Inspect derivation outputs and inputs
+nix show-derivation .#<package>
 ```
 
 ## Incident Response
 
-### Compromise Detection
+### Detection signals
 
-1. **Hash Mismatches**: Nix build failures indicate potential tampering
-2. **Unexpected Versions**: Monitoring alerts for dependency changes
-3. **Vulnerability Reports**: Integration with security advisory feeds
+- **Hash mismatches** — Nix build failures during fetch/build indicate that an upstream artifact no longer matches its locked hash.
+- **Unexpected lock changes** — review tools flagging changes to `flake.lock` / `*-deps.toml` outside an explicit update PR.
+- **Vulnerability feeds** — advisories matching a pinned version.
 
-### Response Process
+### Response
 
-1. **Immediate Containment**
-   ```bash
-   # Revert to known-good state
-   git revert commit-hash
-   nix flake update
-   ```
-
-2. **Impact Assessment**
-   ```bash
-   # Find affected projects
-   nix why-depends .#project /nix/store/compromised-package
-
-   # Check deployment status
-   grep -r "compromised-package" buck-out/
-   ```
-
-3. **Remediation**
-   - Update to patched version in mirrors
-   - Force rebuild of affected components
-   - Update Nix expressions with new hashes
-
-4. **Recovery Verification**
-   ```bash
-   # Verify clean state
-   nix store verify --all
-   buck2 clean && buck2 build //...
-   ```
+1. **Contain.** Revert the lock to a known-good revision: `git revert <commit>`.
+2. **Assess impact.** Use `nix why-depends .#<target> /nix/store/<compromised>` to find what depends on the affected derivation.
+3. **Remediate.** Update to a patched upstream version, or apply a local patch in toolbox/teller until upstream ships a fix.
+4. **Recover.** Rebuild and re-verify: `nix store verify --all && buck2 clean && buck2 build //...`.
 
 ## Implementation Guidelines
 
-### Nix Expression Security
+### Locking
 
 ```nix
-# GOOD: Explicit hashes and sources
-fetchCrate {
-  pname = "serde";
-  version = "1.0.193";
-  sha256 = "sha256-explicit-hash-here";
-}
+# GOOD: explicit hashes via flake inputs
+inputs.foo = { url = "github:owner/repo/<rev>"; flake = false; };
 
-# BAD: Version ranges or dynamic resolution
-fetchCrate {
-  pname = "serde";
-  version = "^1.0";  # Don't use version ranges
-}
-
-# GOOD: Pinned Git revisions
-fetchFromGitHub {
-  owner = "serde-rs";
-  repo = "serde";
-  rev = "specific-commit-hash";
-  sha256 = "sha256-explicit-hash";
-}
-
-# BAD: Branch or tag references
-fetchFromGitHub {
-  owner = "serde-rs";
-  repo = "serde";
-  rev = "main";  # Branches can change
-}
+# AVOID: floating branches without a lock
+inputs.foo.url = "github:owner/repo";  # OK only because flake.lock pins the rev
+inputs.foo.url = "github:owner/repo/main";  # never pin a branch
 ```
 
-### Mirror Repository Setup
+### Patching
 
-1. **Repository Creation**
-   ```bash
-   # Create mirror for each language ecosystem
-   mkdir -p firefly-deps/{rust-crates,go-modules,python-packages}
-   git init firefly-deps/
-   ```
+When upstream is slow to fix a CVE, apply a local patch via toolbox's `patches[]` mechanism (see `toolbox/AGENTS.md`). Patches are vendored in the repo with origin metadata for reproducibility and traceability.
 
-2. **Automated Mirroring**
-   ```nix
-   # Nix expression for automated mirroring
-   let
-     mirrorCrate = name: version: fetchCrate {
-       inherit name version;
-     } // {
-       # Additional security metadata
-       security-review = "2023-11-15";
-       reviewer = "security-team";
-     };
-   in {
-     serde = mirrorCrate "serde" "1.0.193";
-   }
-   ```
+### Buck2 hermiticity
 
-3. **Review Automation**
-   ```bash
-   #!/bin/bash
-   # review-dependency.sh
-   PACKAGE=$1
-   VERSION=$2
-
-   # Fetch and analyze
-   nix build .#$PACKAGE
-   nix run nixpkgs#vulnix -- /result
-
-   # Generate review report
-   echo "Security review for $PACKAGE $VERSION" > review-$PACKAGE-$VERSION.md
-   ```
-
-### Integration with Buck2
-
-Buck2 toolchains should be configured to use only Nix-managed dependencies:
-
-```python
-# toolchains/rust.bzl
-def firefly_rust_toolchain():
-    return system_rust_toolchain(
-        # Ensure toolchain uses Nix-provided rustc
-        rustc = "rustc",  # From Nix environment
-        # Environment variables set by Nix shell configure registry
-        # No need for .cargo/config.toml modification
-    )
-```
-
-**Registry Configuration via Environment Variables (set by Nix shell):**
-```bash
-# Non-intrusive configuration - no user file modification
-export CARGO_HOME=$BUCK_OUT/cargo
-export CARGO_REGISTRY_DEFAULT=firefly-crates
-export CARGO_REGISTRIES_FIREFLY_CRATES_INDEX=file:///nix/store/.../registry-index
-export CARGO_NET_OFFLINE=true
-```
+Buck2 targets in this repo declare dependencies through the generated `godeps//` and `rustdeps//` cells, never through `~/.cargo` or `$GOPATH`. The cells are content-addressed Nix derivations, so a build is reproducible from the lock files alone — no network access needed at build time.
 
 ---
 
-This security architecture transforms dependency management from a distributed, hard-to-audit process into a centralized, reviewable system. By leveraging Nix's cryptographic foundations and adding organizational mirror repositories, we create multiple security layers while maintaining developer productivity and ecosystem compatibility.
-
-The key insight is that **security and usability are not opposing forces** when the architecture is designed correctly. Our approach provides stronger security guarantees than traditional approaches while actually simplifying the developer experience through consistent, reproducible environments.
+The architecture trades dynamic dependency resolution for explicit, auditable pins. The result is stronger security guarantees with **simpler** operations: every change to the dependency graph is a reviewable diff, and every artifact is content-addressed.
