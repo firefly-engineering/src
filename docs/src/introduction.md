@@ -6,9 +6,9 @@ Welcome to the Firefly Engineering monorepo documentation. This documentation co
 
 This monorepo employs a unique architecture that combines the best of both worlds:
 
-- **[Nix + Flakes](./architecture.md#nix-based-toolchain-management)** for reproducible development environments and toolchain management
-- **[Buck2](./architecture.md#buck2-build-system-integration)** as a fast, hermetic build system
-- **[Toolchain Synchronization](./design/toolchain-synchronization.md)** ensuring native tools and Buck2 use identical binaries
+- **[Nix + Flakes](./architecture.md#flake-inputs)** for reproducible development environments and toolchain management
+- **[Buck2](./architecture.md#buck2-cells-turnkey-managed)** as a fast, hermetic build system
+- **[Turnkey](https://github.com/firefly-engineering/turnkey)** ensuring native tools and Buck2 use identical binaries
 - **[Supply Chain Security](./supply-chain-security.md)** through content-addressed dependencies and centralized auditing
 
 ## Key Benefits
