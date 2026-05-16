@@ -3,20 +3,24 @@
     "cachix": {
       "inputs": {
         "devenv": [
+          "turnkey",
           "toolbox",
           "devenv"
         ],
         "flake-compat": [
+          "turnkey",
           "toolbox",
           "devenv",
           "flake-compat"
         ],
         "git-hooks": [
+          "turnkey",
           "toolbox",
           "devenv",
           "git-hooks"
         ],
         "nixpkgs": [
+          "turnkey",
           "toolbox",
           "devenv",
           "nixpkgs"
@@ -93,26 +97,32 @@
       "inputs": {
         "cachix": "cachix",
         "crate2nix": [
+          "turnkey",
           "toolbox"
         ],
         "flake-compat": [
+          "turnkey",
           "toolbox",
           "nix-pins",
           "flake-compat"
         ],
         "flake-parts": [
+          "turnkey",
           "toolbox",
           "nix-pins",
           "flake-parts"
         ],
         "git-hooks": "git-hooks",
         "nix": [
+          "turnkey",
           "toolbox"
         ],
         "nixd": [
+          "turnkey",
           "toolbox"
         ],
         "nixpkgs": [
+          "turnkey",
           "toolbox",
           "nix-pins",
           "nixpkgs"
@@ -288,17 +298,20 @@
     "git-hooks": {
       "inputs": {
         "flake-compat": [
+          "turnkey",
           "toolbox",
           "devenv",
           "flake-compat"
         ],
         "gitignore": [
+          "turnkey",
           "toolbox",
           "nix-pins",
           "pre-commit-hooks-nix",
           "gitignore"
         ],
         "nixpkgs": [
+          "turnkey",
           "toolbox",
           "devenv",
           "nixpkgs"
@@ -614,6 +627,7 @@
     "root": {
       "inputs": {
         "devenv": [
+          "turnkey",
           "toolbox",
           "devenv"
         ],
@@ -626,8 +640,6 @@
           "nix-pins",
           "nixpkgs"
         ],
-        "teller": "teller",
-        "toolbox": "toolbox",
         "turnkey": "turnkey"
       }
     },
@@ -651,6 +663,7 @@
     "rust-overlay": {
       "inputs": {
         "nixpkgs": [
+          "turnkey",
           "toolbox",
           "devenv",
           "nixpkgs"
@@ -709,9 +722,11 @@
     "teller": {
       "inputs": {
         "nix-pins": [
+          "turnkey",
           "nix-pins"
         ],
         "nixpkgs": [
+          "turnkey",
           "teller",
           "nix-pins",
           "nixpkgs"
@@ -736,23 +751,26 @@
         "devenv": "devenv",
         "devenv-root": "devenv-root",
         "nix-pins": [
+          "turnkey",
           "nix-pins"
         ],
         "nixpkgs": [
+          "turnkey",
           "toolbox",
           "nix-pins",
           "nixpkgs"
         ],
         "teller": [
+          "turnkey",
           "teller"
         ]
       },
       "locked": {
-        "lastModified": 1778830376,
-        "narHash": "sha256-hw4rY1nCeMhWcejbFkqQZUMHT0YVmh+T9cPeLIqDAFE=",
+        "lastModified": 1777306222,
+        "narHash": "sha256-XzHh+nWAo2teR5wT2Wsh73cR2uW/th0foAxFEtJhq+4=",
         "owner": "firefly-engineering",
         "repo": "toolbox",
-        "rev": "9b190de95aa36df3215cfc239c44668f5ec47109",
+        "rev": "394377767c73d59d80a3a994248bfb40b0d57305",
         "type": "github"
       },
       "original": {
@@ -804,19 +822,15 @@
           "nix-pins",
           "nixpkgs"
         ],
-        "teller": [
-          "teller"
-        ],
-        "toolbox": [
-          "toolbox"
-        ]
+        "teller": "teller",
+        "toolbox": "toolbox"
       },
       "locked": {
-        "lastModified": 1778835074,
-        "narHash": "sha256-I8VqeEpUDAph/mWy58UFPbBLQNZPMG5ZiXD6l+QcqpE=",
+        "lastModified": 1778909894,
+        "narHash": "sha256-6pkKCqYJ9Bfz8hpxEwrDgxMPDSBxfPFlHNDQbbm3uU4=",
         "owner": "firefly-engineering",
         "repo": "turnkey",
-        "rev": "c3c864bc437ef35cb05bee0e3b321a47b1aa014c",
+        "rev": "3e2e4ae5a6b0a32d61684f613eb7c85edea410d5",
         "type": "github"
       },
       "original": {

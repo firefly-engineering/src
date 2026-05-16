@@ -22,19 +22,20 @@ The supporting libraries are:
 
 ### Flake inputs
 
-The root `flake.nix` pulls everything through `nix-pins` so that nixpkgs, flake-parts, and devenv resolve to the same revisions as the rest of the ecosystem:
+The root `flake.nix` pulls everything through `nix-pins` so that nixpkgs, flake-parts, and devenv resolve to the same revisions as the rest of the ecosystem. Teller and toolbox come in transitively via turnkey and don't need to be declared at the top level:
 
 ```nix
 inputs = {
   nix-pins.url = "github:firefly-engineering/nix-pins";
-  nixpkgs.follows  = "nix-pins/nixpkgs";
+  nixpkgs.follows = "nix-pins/nixpkgs";
   flake-parts.follows = "nix-pins/flake-parts";
 
-  teller   = { url = "github:firefly-engineering/teller";   inputs.nix-pins.follows = "nix-pins"; };
-  toolbox  = { url = "github:firefly-engineering/toolbox";  inputs.nix-pins.follows = "nix-pins"; inputs.teller.follows = "teller"; };
-  turnkey  = { url = "github:firefly-engineering/turnkey";  inputs.nix-pins.follows = "nix-pins"; inputs.teller.follows = "teller"; inputs.toolbox.follows = "toolbox"; };
+  turnkey = {
+    url = "github:firefly-engineering/turnkey";
+    inputs.nix-pins.follows = "nix-pins";
+  };
 
-  devenv.follows = "toolbox/devenv";
+  devenv.follows = "turnkey/toolbox/devenv";
 };
 ```
 
@@ -87,13 +88,11 @@ Buck2 references these as cells (e.g. `godeps//vendor/golang.org/x/example/hello
 
 ### Configuration entry point
 
-`nix/shell.nix` wires it all up via the turnkey flake-parts module:
+`nix/shell.nix` wires it all up via the turnkey flake-parts module. `tellerLib` and `tellerRegistry` default to the bundled teller + toolbox setup, so the consumer only declares the project-specific bits:
 
 ```nix
 turnkey.toolchains = {
   enable = true;
-  tellerLib = inputs.teller.lib;
-  tellerRegistry = (overlaidPkgs with teller + toolbox overlays).turnkeyRegistry;
   declarationFiles.default = ../toolchain.toml;
 
   buck2 = {
@@ -103,6 +102,8 @@ turnkey.toolchains = {
   };
 };
 ```
+
+Override `tellerLib`/`tellerRegistry` only when targeting a non-default registry (e.g. a private overlay on top of toolbox).
 
 ## Build files
 
