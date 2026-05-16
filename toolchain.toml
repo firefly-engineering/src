@@ -20,5 +20,4 @@ mdbook-toolchain = {}
 # Development utilities
 nix = {}
 jj = {}
-beads = {}
-beads-viewer = {}
+beadwork = {}  # provides bw + bw-tui
