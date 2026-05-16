@@ -1,0 +1,86 @@
+name: "Copilot Setup Steps"
+
+# Prepares the agent's filesystem snapshot with:
+#   - Nix + flakes enabled
+#   - firefly-toolbox cachix substituter wired in /etc/nix/nix.conf
+#   - The dev shell's full closure pre-fetched into /nix/store
+#   - direnv loaded, so the turnkey enterShell hook has run (and therefore
+#     .buckconfig is a live symlink, .turnkey/* cells are materialized,
+#     and go-deps.toml / rust-deps.toml are in sync with go.mod / Cargo.lock)
+#
+# Job name must be "copilot-setup-steps" — Copilot won't pick it up otherwise.
+
+on:
+  workflow_dispatch:
+  # `push` scoped to main so PR-branch pushes don't fire both events.
+  # PRs run via `pull_request` only; main runs via `push` after merge.
+  push:
+    branches: [main]
+    paths: [.github/workflows/copilot-setup-steps.yml]
+  pull_request:
+    paths: [.github/workflows/copilot-setup-steps.yml]
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix with flakes + firefly caches
+        # Both firefly caches are wired here via extra-conf so the substituter
+        # + public-key pair is in /etc/nix/nix.conf before any nix command
+        # runs (no dependence on the flake's nixConfig trust prompt).
+        #   - firefly-toolbox: built toolchain packages (go, rust, buck2, beadwork, ...)
+        #   - firefly-turnkey: turnkey-specific derivations (turnkey-prelude, tk, tw, ...)
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+            extra-substituters = https://firefly-toolbox.cachix.org https://firefly-turnkey.cachix.org
+            extra-trusted-public-keys = firefly-toolbox.cachix.org-1:4RgCoc0+CS7QhRarG109VmWlnlYi+rQ5JYrCsRP5aK8= firefly-turnkey.cachix.org-1:zuJsRFMBLYuz9IyQQ+XId96P3DCuBkHvuQlI4gggXNE=
+
+      - name: Wire Magic Nix Cache (GHA-backed substituter for local builds)
+        # Caches store paths *built* on this runner into GitHub Actions' cache,
+        # so subsequent workflow runs restore them instead of rebuilding.
+        # Paths already fetched from cache.nixos.org / firefly-* are skipped
+        # (the daemon respects upstream cache semantics) — so this only covers
+        # the gap: derivations like the devenv git-hooks Rust closure that
+        # aren't in any public cache.
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Install direnv + nix-direnv
+        run: |
+          nix profile install --accept-flake-config \
+            nixpkgs#direnv nixpkgs#nix-direnv
+          mkdir -p ~/.config/direnv
+          echo "source $HOME/.nix-profile/share/nix-direnv/direnvrc" \
+            > ~/.config/direnv/direnvrc
+
+      - name: Fetch dev-shell closure + trigger turnkey enterShell hook
+        # `direnv exec . true` loads .envrc (`use flake . --no-pure-eval`),
+        # which both materializes the dev-shell closure into /nix/store
+        # (via the cachix substituter wired above) and fires the devenv
+        # shell activation — including turnkey's enterShell hook that
+        # materializes .turnkey/* symlinks, links .buckconfig to the
+        # Nix-generated config, and syncs go-deps.toml / rust-deps.toml.
+        #
+        # Plain `nix develop --command true` would also fetch the closure
+        # but fails here: devenv requires --impure (the `devenv-root`
+        # discovery mechanism), and direnv passes --no-pure-eval for us.
+        run: |
+          direnv allow .
+          direnv exec . true
+          # Sanity check: the agent will find the tools turnkey provisions.
+          direnv exec . bash -c 'command -v buck2 bw tk jj go cargo'
+
+      - name: Expose dev-shell PATH + env to the agent
+        # The agent inherits $GITHUB_ENV from the snapshot, so populating it
+        # here lets the agent invoke tools directly without `direnv exec`.
+        run: |
+          direnv exec . env \
+            | grep -E '^(PATH|GOPATH|GOCACHE|CARGO_HOME|RUSTUP_HOME|DEVENV_|TURNKEY_)=' \
+            >> "$GITHUB_ENV"
