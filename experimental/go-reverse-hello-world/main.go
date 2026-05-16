@@ -1,11 +1,11 @@
 package main
 
 import (
-    "fmt"
-    "golang.org/x/example/hello/reverse"
+	"fmt"
+
+	"github.com/firefly-engineering/src/experimental/go-reverse-hello-world/reverser"
 )
 
 func main() {
-    fmt.Println(reverse.String("Hello, Firefly!"))
-    // Output: !ylferif ,olleH
+	fmt.Println(reverser.Reverse("Hello, Firefly!"))
 }
