@@ -766,11 +766,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1777306222,
-        "narHash": "sha256-XzHh+nWAo2teR5wT2Wsh73cR2uW/th0foAxFEtJhq+4=",
+        "lastModified": 1778830376,
+        "narHash": "sha256-hw4rY1nCeMhWcejbFkqQZUMHT0YVmh+T9cPeLIqDAFE=",
         "owner": "firefly-engineering",
         "repo": "toolbox",
-        "rev": "394377767c73d59d80a3a994248bfb40b0d57305",
+        "rev": "9b190de95aa36df3215cfc239c44668f5ec47109",
         "type": "github"
       },
       "original": {
@@ -826,11 +826,11 @@
         "toolbox": "toolbox"
       },
       "locked": {
-        "lastModified": 1778909894,
-        "narHash": "sha256-6pkKCqYJ9Bfz8hpxEwrDgxMPDSBxfPFlHNDQbbm3uU4=",
+        "lastModified": 1778911642,
+        "narHash": "sha256-qEmAfQXmtyAQB8SucvFI8aLSHJ9jISDaCae3r0ksETk=",
         "owner": "firefly-engineering",
         "repo": "turnkey",
-        "rev": "3e2e4ae5a6b0a32d61684f613eb7c85edea410d5",
+        "rev": "f4adc8f802d7fd26fec93bd2e78e36d2b438ded7",
         "type": "github"
       },
       "original": {
