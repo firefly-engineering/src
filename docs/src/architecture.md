@@ -55,7 +55,7 @@ nodejs = {}
 typescript = {}
 nix = {}
 jj = {}
-beads = {}
+beadwork = {}
 mdbook-toolchain = {}
 ```
 
